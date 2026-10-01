@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["astro", "dev", "--port", "4324"],
+      "port": 4324
+    }
+  ]
+}

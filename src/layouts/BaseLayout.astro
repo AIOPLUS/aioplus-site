@@ -1,0 +1,52 @@
+---
+import '@fontsource-variable/geist';
+import '@/styles/global.css';
+import { merk } from '@/config/site';
+import { absoluteUrl, url } from '@/lib/url';
+import { LABELS } from '@/data/labels';
+
+interface Props {
+  title: string;
+  description: string;
+  path?: string;
+  noindex?: boolean;
+}
+const { title, description, path = '/', noindex = false } = Astro.props;
+const canonical = absoluteUrl(path);
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: merk.naam,
+  legalName: merk.juridischeNaam,
+  url: absoluteUrl('/'),
+  email: merk.email,
+  description: merk.beschrijving,
+  brand: LABELS.map((l) => ({ '@type': 'Brand', name: l.naam, ...(l.site ? { url: l.site.href } : {}) })),
+};
+---
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#030305" />
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+    <link rel="sitemap" href={url('/sitemap-index.xml')} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="nl_NL" />
+    <meta property="og:site_name" content={merk.naam} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+  </head>
+  <body data-stijl="stelsel">
+    <slot />
+  </body>
+</html>
