@@ -134,7 +134,7 @@ h1 span:last-child { --dx: 28px; }
 .knop { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--k); color: #030305; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--k) 60%, #fff), 0 0 26px color-mix(in srgb, var(--k) 55%, transparent); transition: box-shadow .3s var(--ease), translate .3s var(--ease); }
 .knop:hover { translate: 0 -1px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--k) 60%, #fff), 0 0 40px color-mix(in srgb, var(--k) 75%, transparent); }
-.knop:focus-visible, .site:focus-visible, .terug:focus-visible, .knop-ghost:focus-visible, .voettekst a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.knop:focus-visible, .site:focus-visible, .terug:focus-visible, .knop-ghost:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 .site { color: #fff; font-size: 14px; font-weight: 500; text-decoration: none; opacity: .9; }
 .site:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
 .knop-ghost { height: 42px; padding: 0 20px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .22); background: transparent; color: var(--tekst); font-size: 14px; font-weight: 500; cursor: pointer; }
@@ -202,17 +202,6 @@ nav.labels.labels[data-gekozen='tabplus'] { grid-template-columns: 0fr 1fr; grid
 .h-slot { justify-items: center; text-align: center; }
 .h-slot h3 { margin: 0 0 28px; font-weight: 500; font-size: clamp(2.2rem, 5vw, 4.4rem); letter-spacing: -.04em; line-height: 1; max-width: 16ch; }
 .h-slot .acties { justify-content: center; }
-
-/* ---------- onderkant ---------- */
-.voettekst { position: relative; z-index: 1; padding: 64px clamp(20px, 6vw, 96px) calc(40px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgb(3 3 5 / .92) 40%); color: var(--zacht); font-size: 14px; line-height: 1.6; }
-.voettekst-binnen { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 28px; padding-top: 28px; border-top: 1px solid rgb(255 255 255 / .1); }
-.voettekst h2 { margin: 0 0 8px; color: var(--tekst); font-size: 14px; font-weight: 500; }
-.voettekst ul { list-style: none; margin: 0; padding: 0; }
-.voettekst li { padding: 4px 0; }
-.voettekst li a, .voettekst li span { display: inline-block; min-height: 24px; line-height: 24px; }
-.voettekst a { color: var(--tekst); text-decoration: underline; text-decoration-color: rgb(245 242 236 / .3); text-underline-offset: 3px; }
-.voettekst a:hover { text-decoration-color: currentColor; }
-.voettekst p { margin: 0; }
 
 /* ---------- mobiel ---------- */
 @media (max-width: 810px) { .pijler { grid-template-columns: 1fr; gap: 18px; } .p-nr { font-size: 5.5rem; } }
