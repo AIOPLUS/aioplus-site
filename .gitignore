@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+!.env.example
+.lighthouseci/
+*.log
+.DS_Store
+
+# Claude Code: persoonlijke instellingen
+.claude/settings.local.json

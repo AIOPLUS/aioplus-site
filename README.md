@@ -1,0 +1,40 @@
+# aioplus-site
+
+De website van AIO Plus: één platform, één AI-laag (AIO, powered by Claude) en vier labels (Review Plus, View Plus, Website Plus en Tab Plus). Een scroll-presentatie in de ruimte, gebouwd met Astro 7 (statisch), TypeScript, Tailwind 4 en Three.js.
+
+## Het verhaal
+
+1. **Opening**: losse sterren trekken samen tot een wolk en draaien uit tot een spiraalstelsel met vier armen in de labelkleuren, met AIO als fel centrum. "AIO" links, "Plus" rechts.
+2. **Scrollen**: je vliegt het stelsel in; het valt uiteen in een sterrenhemel en de zin "Eén AI-motor. Vier gespecialiseerde labels." verschijnt.
+3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Vier stijlen (nevels, stelsels, planeten, horizon) wisselen elkaar elke 10 seconden af. Het kwart onder de muis wordt groter.
+4. **Inzoomen**: "Ontdek" (of een label in het hoofdmenu) laat het label het scherm vullen; daarna volgt een presentatie per label met kerncijfers en onderdelen.
+
+Langs de rand stroomt een regenboog van de vier labelkleuren; met de muis op een label wordt die gloed (en het tabje rechts) de kleur van dat label.
+
+## Werken
+
+```bash
+npm install
+npm run dev      # http://localhost:4321
+npm run check    # typecheck, lint, build, linkcheck
+```
+
+Handig bij het testen: `?t=9` slaat de intro over, `?stijl=planeet` start het menu in een andere stijl.
+
+Met `prefers-reduced-motion` staat alles stil en onder elkaar; zonder WebGL blijft de pagina bruikbaar.
+
+## Testversie en livegang
+
+- **Testversie**: https://aioplus.github.io/aioplus-site (GitHub Pages, `BASE_PATH=/aioplus-site`).
+- **Live op aioplus.ai**: zet in GitHub de variabelen `SITE_URL=https://www.aioplus.ai` en `BASE_PATH=/`, voeg `public/CNAME` toe met `www.aioplus.ai`, en zet bij GoDaddy:
+  - `www`: CNAME naar `aioplus.github.io`;
+  - apex (`@`): A-records naar 185.199.108.153, 185.199.109.153, 185.199.110.153 en 185.199.111.153.
+
+  Daarna in GitHub (Settings → Pages) het eigen domein invullen en HTTPS afdwingen.
+
+## Nog open
+
+- KvK-nummer en adres in de footer (Jordan levert aan).
+- Een eigen formulier in plaats van de e-mailknoppen (via Make, chat "AIO Plus - Make").
+- Een Open Graph-afbeelding voor gedeelde links.
+- De cijfers van Review Plus komen nog van EmbedMyReviews; controleren bij de overstap naar de eigen app.
