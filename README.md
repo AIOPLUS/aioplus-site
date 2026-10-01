@@ -23,18 +23,16 @@ Handig bij het testen: `?t=9` slaat de intro over, `?stijl=planeet` start het me
 
 Met `prefers-reduced-motion` staat alles stil en onder elkaar; zonder WebGL blijft de pagina bruikbaar.
 
-## Testversie en livegang
+## Live
 
-- **Testversie**: https://aioplus.github.io/aioplus-site (GitHub Pages, `BASE_PATH=/aioplus-site`).
-- **Live op aioplus.ai**: zet in GitHub de variabelen `SITE_URL=https://www.aioplus.ai` en `BASE_PATH=/`, voeg `public/CNAME` toe met `www.aioplus.ai`, en zet bij GoDaddy:
-  - `www`: CNAME naar `aioplus.github.io`;
-  - apex (`@`): A-records naar 185.199.108.153, 185.199.109.153, 185.199.110.153 en 185.199.111.153.
-
-  Daarna in GitHub (Settings → Pages) het eigen domein invullen en HTTPS afdwingen.
+- **Live**: https://www.aioplus.ai sinds 02-10-2026 (GitHub Pages). aioplus.ai en de oude testversie https://aioplus.github.io/aioplus-site sturen door naar www.
+- **GitHub**: variabelen `SITE_URL=https://www.aioplus.ai` en `BASE_PATH=/`; het eigen domein en HTTPS staan in Settings → Pages (geen CNAME-bestand nodig bij uitrol via Actions).
+- **DNS bij GoDaddy**: apex (`@`) A-records naar 185.199.108.153, 185.199.109.153, 185.199.110.153 en 185.199.111.153; `www` CNAME naar `aioplus.github.io`.
+- Na een uitrol kan GitHub Pages tot 10 minuten de oude versie tonen (cache); controleer met `?v=<n>`.
 
 ## Nog open
 
-- KvK-nummer en adres in de footer (Jordan levert aan).
+- KvK-nummer op de site (verplicht voor een zakelijke site); de footer is op verzoek van Jordan weggehaald.
 - Een eigen formulier in plaats van de e-mailknoppen (via Make, chat "AIO Plus - Make").
 - Een Open Graph-afbeelding voor gedeelde links.
 - De cijfers van Review Plus komen nog van EmbedMyReviews; controleren bij de overstap naar de eigen app.
