@@ -1,0 +1,18 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { url } from '@/lib/url';
+---
+<BaseLayout title="Pagina niet gevonden · AIO Plus" description="Deze pagina bestaat niet (meer)." path="/404" noindex>
+  <main class="niet-gevonden">
+    <p class="h-kicker">404</p>
+    <h1>Verdwaald in de ruimte.</h1>
+    <p>Deze pagina bestaat niet (meer).</p>
+    <a class="pil" href={url('/')}>Terug naar AIO Plus</a>
+  </main>
+</BaseLayout>
+
+<style>
+  .niet-gevonden { min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; text-align: center; --k: #f5f2ec; }
+  .niet-gevonden h1 { position: static; display: block; padding: 0; margin: 0; font-size: clamp(2.4rem, 6vw, 4.8rem); }
+  .niet-gevonden p { margin: 0; color: var(--zacht); }
+</style>

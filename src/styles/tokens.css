@@ -1,0 +1,21 @@
+/*
+ * Design tokens van aioplus.ai: bijna zwart heelal, crème tekst, de vier labelkleuren als licht.
+ * Labelkleuren: lichte varianten van de merkkleuren (#1818FF, #7A01B0, #FF5722, #14893F), leesbaar op zwart.
+ */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-heelal: #030305;
+  --color-tekst: #f5f2ec;
+  --color-review: #4f6bff;
+  --color-view: #c150ff;
+  --color-website: #ff6a3d;
+  --color-tab: #3bdb7f;
+
+  /* Alle breakpoints in px, zoals op de andere sites */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 810px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1440px;
+  --breakpoint-2xl: 1536px;
+}
