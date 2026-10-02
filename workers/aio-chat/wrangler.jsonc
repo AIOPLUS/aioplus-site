@@ -1,0 +1,24 @@
+// Cloudflare-configuratie van de AIO-chat op aioplus.ai. Uitleg: README.md in deze map.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aio-chat",
+  // Cloudflare-account (geen geheim).
+  "account_id": "a9f7b139bcc3718db3889fb03f374f45",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // De labelteksten komen uit de site (src/data/labels.ts); die importeert mailto() uit de siteconfiguratie,
+  // die in een Worker niet werkt (import.meta.env). Hier een eigen versie.
+  "alias": { "@/config/site": "./src/site.ts" },
+  "vars": {
+    // Websites die de chat mogen gebruiken (komma's ertussen).
+    "HERKOMST": "https://www.aioplus.ai,https://aioplus.ai,https://aioplus.github.io,http://localhost:4321,http://localhost:4324",
+    // Plafonds (besluit Jordan 02-10-2026): $5 per dag voor alle bezoekers samen, 20 vragen per bezoeker per dag.
+    "DAGBUDGET_USD": "5",
+    "VRAGEN_PER_DAG": "20"
+  },
+  // Eén teller voor de hele chat: houdt per dag de kosten en het aantal vragen per bezoeker bij (src/teller.ts).
+  "durable_objects": { "bindings": [{ "name": "TELLER", "class_name": "Teller" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Teller"] }]
+}
