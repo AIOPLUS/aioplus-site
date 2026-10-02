@@ -20,6 +20,8 @@ concurrency:
 env:
   SITE_URL: ${{ vars.SITE_URL || 'https://aioplus.github.io' }}
   BASE_PATH: ${{ vars.BASE_PATH || '/aioplus-site' }}
+  # Adres van de AIO-chat; leeg = het vaste adres in src/scripts/aio-chat.ts.
+  PUBLIC_AIO_CHAT_URL: ${{ vars.PUBLIC_AIO_CHAT_URL }}
 
 jobs:
   build:

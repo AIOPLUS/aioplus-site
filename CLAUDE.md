@@ -10,5 +10,6 @@ Website van AIO Plus, live op https://www.aioplus.ai. De centrale instructies (b
 - **Merkgegevens en e-mailknoppen**: `src/config/site.ts` (`merk`, `mailto()`).
 - **Pagina**: `src/pages/index.astro`; lay-out en zoekmachinegegevens in `src/layouts/BaseLayout.astro`.
 - **Heelal, scroll-animaties en inzoomen**: `src/scripts/heelal.ts` (Three.js, alles in één shader).
+- **AIO-chat**: knop en venster in `src/scripts/aio-chat.ts`; de Worker met de systeemprompt, plafonds en sleutels in `workers/aio-chat/` (eigen README, eigen check en uitrol via `.github/workflows/chat.yml`).
 - **Opmaak**: `src/styles/global.css`, tokens in `src/styles/tokens.css`.
 - **CI**: `.github/workflows/ci.yml` draait `npm run check` op elke pull request; `deploy.yml` zet main live op GitHub Pages.

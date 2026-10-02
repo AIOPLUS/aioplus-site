@@ -1,0 +1,53 @@
+name: AIO-chat
+
+# De Worker van de AIO-chat (workers/aio-chat): controleren bij elke pull request die hem raakt, en na een merge naar
+# main (of met de hand via "Run workflow") uitrollen naar Cloudflare.
+# Nodig voor de uitrol: secret CLOUDFLARE_API_TOKEN (sjabloon "Edit Cloudflare Workers"; Jordan maakt en plakt hem).
+# De sleutel van Anthropic staat niet hier maar als secret ANTHROPIC_API_KEY bij de Worker in Cloudflare (Jordan plakt).
+on:
+  pull_request:
+    paths: ['workers/aio-chat/**', '.github/workflows/chat.yml']
+  push:
+    branches: [main]
+    paths: ['workers/aio-chat/**', 'src/data/labels.ts', '.github/workflows/chat.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aio-chat
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: workers/aio-chat
+
+jobs:
+  chat:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Account van PIEROT SALES bij Cloudflare (geen geheim; staat ook in wrangler.jsonc).
+      CLOUDFLARE_ACCOUNT_ID: a9f7b139bcc3718db3889fb03f374f45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: workers/aio-chat/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - name: Uitrollen
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::Secret CLOUDFLARE_API_TOKEN ontbreekt: de chat is niet uitgerold (zie workers/aio-chat/README.md)"; exit 0
+          fi
+          # Eerst de sleutel testen, zodat een verkeerde sleutel meteen opvalt (toont alleen ja/nee).
+          ok=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -r .success)
+          [ "$ok" = "true" ] || ok=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify" | jq -r .success)
+          echo "Cloudflare-sleutel geldig: $ok"
+          [ "$ok" = "true" ] || { echo "::error::CLOUDFLARE_API_TOKEN werkt niet"; exit 1; }
+          npx wrangler deploy

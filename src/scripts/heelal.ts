@@ -327,7 +327,7 @@ const hint = $<HTMLElement>('.hint');
 const tab = $<HTMLElement>('.tab span');
 const reis = $<HTMLElement>('.reis');
 const hoofdstukken = new Map([...document.querySelectorAll<HTMLElement>('[data-hoofdstuk]')].map((el) => [el.dataset.hoofdstuk as LabelId, el]));
-const menuKnoppen = [...document.querySelectorAll<HTMLButtonElement>('.hoofdmenu button')];
+const menuKnoppen = [...document.querySelectorAll<HTMLButtonElement>('.hoofdmenu button[data-ga]')];
 const labelVan = (id: LabelId) => LABELS.find((l) => l.id === id)!;
 const zoek = new URLSearchParams(location.search);
 const start = performance.now() - (rustig ? 9000 : Number(zoek.get('t') || 0) * 1000);

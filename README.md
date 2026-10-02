@@ -9,6 +9,8 @@ De website van AIO Plus: één platform, één AI-laag (AIO, powered by Claude) 
 3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Stijl: nevels in de labelkleur. Drie andere stijlen (stelsels, planeten, horizon) staan klaar voor later (`AUTOMATISCH_WISSELEN` in `src/scripts/heelal.ts`). Het kwart onder de muis wordt groter.
 4. **Inzoomen**: "Ontdek" (of een label in het hoofdmenu) laat het label het scherm vullen; daarna volgt een presentatie per label met kerncijfers en onderdelen.
 
+**AIO-chat**: de ronde AIO-knop midden in het hoofdmenu opent een chatvenster in het midden van het scherm, waar bezoekers vragen stellen aan AIO (Claude Sonnet 5.5). View Plus en Tab Plus staan daarom rechts uitgelijnd. De chat praat met een eigen Worker bij Cloudflare (`workers/aio-chat`, uitleg in de README daar); het adres staat in `src/scripts/aio-chat.ts` (of GitHub-variabele `PUBLIC_AIO_CHAT_URL`).
+
 Langs de rand stroomt een regenboog van de vier labelkleuren; met de muis op een label wordt die gloed (en het tabje rechts) de kleur van dat label.
 
 ## Werken
