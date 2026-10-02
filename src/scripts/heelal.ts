@@ -336,10 +336,13 @@ const glad = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-// De vier menustijlen wisselen elkaar elke 5 seconden af zolang de muis stilligt (niet tijdens inzoomen of met minder beweging).
+// Menustijl: voorlopig alleen nevels (besluit Jordan 02-10-2026). De andere stijlen blijven beschikbaar voor later:
+// zet AUTOMATISCH_WISSELEN op true om ze elke 5 seconden te laten afwisselen zolang de muis stilligt.
+// Bekijken kan ook met ?stijl=stelsel, ?stijl=planeet of ?stijl=horizon.
+const AUTOMATISCH_WISSELEN = false;
 const STIJLEN = ['nevel', 'stelsel', 'planeet', 'horizon'] as const;
 const WISSEL_MS = 5000, OVERGANG_MS = 1800, MUIS_RUST_MS = 1200;
-let stijlNu = Math.max(0, STIJLEN.indexOf((zoek.get('stijl') || 'stelsel') as (typeof STIJLEN)[number]));
+let stijlNu = Math.max(0, STIJLEN.indexOf((zoek.get('stijl') || 'nevel') as (typeof STIJLEN)[number]));
 let stijlVolgend = stijlNu, overgangStart = 0, wisselVanaf = 0;
 const zetStijl = (i: number) => { document.body.dataset.stijl = STIJLEN[i]; };
 zetStijl(stijlNu);
@@ -362,7 +365,7 @@ function stijlStap(nu: number, menuZichtbaar: boolean, rust: boolean): void {
   }
   uniforms.uStijl.value = stijlNu;
   uniforms.uStijlNaar.value = stijlNu;
-  if (nu - wisselVanaf >= WISSEL_MS) {
+  if (AUTOMATISCH_WISSELEN && nu - wisselVanaf >= WISSEL_MS) {
     wisselVanaf = nu;
     stijlVolgend = (stijlNu + 1) % STIJLEN.length;
     zetStijl(stijlVolgend);

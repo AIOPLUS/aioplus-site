@@ -6,7 +6,7 @@ De website van AIO Plus: één platform, één AI-laag (AIO, powered by Claude) 
 
 1. **Opening**: losse sterren trekken samen tot een wolk en draaien uit tot een spiraalstelsel met vier armen in de labelkleuren, met AIO als fel centrum. "AIO" links, "Plus" rechts.
 2. **Scrollen**: je vliegt het stelsel in; het valt uiteen in een sterrenhemel en de zin "Eén AI-motor. Vier gespecialiseerde labels." verschijnt.
-3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Vier stijlen (nevels, stelsels, planeten, horizon) wisselen elkaar elke 10 seconden af. Het kwart onder de muis wordt groter.
+3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Stijl: nevels in de labelkleur. Drie andere stijlen (stelsels, planeten, horizon) staan klaar voor later (`AUTOMATISCH_WISSELEN` in `src/scripts/heelal.ts`). Het kwart onder de muis wordt groter.
 4. **Inzoomen**: "Ontdek" (of een label in het hoofdmenu) laat het label het scherm vullen; daarna volgt een presentatie per label met kerncijfers en onderdelen.
 
 Langs de rand stroomt een regenboog van de vier labelkleuren; met de muis op een label wordt die gloed (en het tabje rechts) de kleur van dat label.
@@ -19,7 +19,7 @@ npm run dev      # http://localhost:4321
 npm run check    # typecheck, lint, build, linkcheck
 ```
 
-Handig bij het testen: `?t=9` slaat de intro over, `?stijl=planeet` start het menu in een andere stijl.
+Handig bij het testen: `?t=9` slaat de intro over, `?stijl=planeet` toont het menu in een andere stijl.
 
 Met `prefers-reduced-motion` staat alles stil en onder elkaar; zonder WebGL blijft de pagina bruikbaar.
 
