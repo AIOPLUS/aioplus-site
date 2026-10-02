@@ -302,10 +302,11 @@ maat();
 addEventListener('resize', maat);
 
 // ---------- muis ----------
-let doelKracht = 0, kracht = 0;
+let doelKracht = 0, kracht = 0, laatsteMuis = -Infinity;
 const muis = new Vector2(), muisDoel = new Vector2();
 if (!rustig) {
   const volg = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') laatsteMuis = performance.now();
     muisDoel.set((e.clientX / innerWidth) * 2 - 1, 1 - (e.clientY / innerHeight) * 2);
     if (doelKracht === 0) muis.copy(muisDoel);
     doelKracht = 1;
@@ -335,14 +336,17 @@ const glad = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-// De vier menustijlen wisselen elkaar elke 10 seconden af (niet tijdens hover, inzoomen of met minder beweging).
+// De vier menustijlen wisselen elkaar elke 5 seconden af zolang de muis stilligt (niet tijdens inzoomen of met minder beweging).
 const STIJLEN = ['nevel', 'stelsel', 'planeet', 'horizon'] as const;
-const WISSEL_MS = 10000, OVERGANG_MS = 1800;
+const WISSEL_MS = 5000, OVERGANG_MS = 1800, MUIS_RUST_MS = 1200;
 let stijlNu = Math.max(0, STIJLEN.indexOf((zoek.get('stijl') || 'stelsel') as (typeof STIJLEN)[number]));
-let stijlVolgend = stijlNu, overgangStart = 0, wisselKlok = 0;
+let stijlVolgend = stijlNu, overgangStart = 0, wisselVanaf = 0;
 const zetStijl = (i: number) => { document.body.dataset.stijl = STIJLEN[i]; };
 zetStijl(stijlNu);
-function stijlStap(dt: number, menuZichtbaar: boolean, rust: boolean): void {
+function stijlStap(nu: number, menuZichtbaar: boolean, rust: boolean): void {
+  // Echte tijd (niet per beeld opgeteld), en de klok loopt ook tijdens de overgang: precies WISSEL_MS tussen twee wissels.
+  // Na muisbeweging, buiten het menu of met minder beweging begint de klok opnieuw.
+  if (rust || !menuZichtbaar || rustig) wisselVanaf = nu;
   if (overgangStart) {
     const o = Math.min(1, (performance.now() - overgangStart) / OVERGANG_MS);
     uniforms.uStijl.value = stijlNu;
@@ -358,10 +362,8 @@ function stijlStap(dt: number, menuZichtbaar: boolean, rust: boolean): void {
   }
   uniforms.uStijl.value = stijlNu;
   uniforms.uStijlNaar.value = stijlNu;
-  if (!menuZichtbaar || rust || rustig) return;
-  wisselKlok += dt * 1000;
-  if (wisselKlok >= WISSEL_MS) {
-    wisselKlok = 0;
+  if (nu - wisselVanaf >= WISSEL_MS) {
+    wisselVanaf = nu;
     stijlVolgend = (stijlNu + 1) % STIJLEN.length;
     zetStijl(stijlVolgend);
     overgangStart = performance.now();
@@ -479,7 +481,8 @@ function frame(nu: number): void {
 
   // rand en tabje: regenboog, of de kleur van het label onder de muis of het gekozen label
   const actief = navHover || gekozen || (tekst > 0.6 ? hoverLabel : null);
-  stijlStap(dt, tekst > 0.9, Boolean(gekozen || hoverLabel || navHover));
+  // de kwarten vullen het scherm: een stilliggende muis staat altijd op een kwart, dus alleen beweging pauzeert het wisselen
+  stijlStap(nu, tekst > 0.9, Boolean(gekozen || navHover) || nu - laatsteMuis < MUIS_RUST_MS);
   if (gekozen !== huidigMenu) {
     huidigMenu = gekozen;
     menuKnoppen.forEach((b) => b.setAttribute('aria-current', String(b.dataset.ga === gekozen)));
