@@ -26,7 +26,7 @@ import { url } from '@/lib/url';
     </a>
     <nav class="hoofdmenu" aria-label="Hoofdmenu">
       {LABELS.map((l) => (
-        <button type="button" data-ga={l.id} style={`--k:${l.kleur}`}><i></i>{l.kort}<span class="plus"> Plus</span></button>
+        <button type="button" data-ga={l.id} style={`--k:${l.kleur}`}><i></i><span>{l.kort}<span class="plus"> Plus</span></span></button>
       ))}
     </nav>
     <a class="pil" href={mailto('Demo AIO Plus')}>Plan een demo</a>
@@ -60,7 +60,7 @@ import { url } from '@/lib/url';
                 <span class="oms">{l.oms}</span>
                 <span class="voet"><span class="status">{l.status}</span></span>
                 <span class="acties">
-                  <button type="button" class="knop" data-zoom={l.id} aria-label={`Ontdek ${l.naam}`}>Ontdek<span class="lang"> {l.naam}</span> →</button>
+                  <button type="button" class="knop" data-zoom={l.id} aria-label={`Ontdek ${l.naam}`}><span>Ontdek<span class="lang"> {l.naam}</span></span> →</button>
                   {l.site && <a class="site" href={l.site.href}>{l.site.label} ↗</a>}
                 </span>
               </span>
