@@ -20,7 +20,11 @@ export type AioOpties = {
 const VIER = [LABELKLEUR.reviewplus, LABELKLEUR.viewplus, LABELKLEUR.websiteplus, LABELKLEUR.tabplus];
 const v3 = (hex: number) => new THREE.Vector3(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
 const FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-let bol: THREE.SphereGeometry | null = null;
+// Klein (34–40 px) is een grovere bol genoeg: minder werk bij het opstarten en per beeld.
+const bollen: Partial<Record<'klein' | 'groot', THREE.SphereGeometry>> = {};
+const bolVoor = (g: 'klein' | 'groot') => (bollen[g] ??= g === 'klein' ? new THREE.SphereGeometry(1, 48, 32) : new THREE.SphereGeometry(1, 128, 96));
+/** Kleine sterren tekenen op ongeveer 30 beelden per seconde: op 40 px zie je geen verschil, de batterij wel. */
+const KLEIN_INTERVAL = 1 / 31;
 
 // ---------- gedeelde lus ----------
 const sterren = new Set<AioSter>();
@@ -56,6 +60,7 @@ export class AioSter {
   private inBeeld = true;
   private kijk = new THREE.Vector3(0, 0, 1);
   private vonkLabel: AioLabel | null = null;
+  private opgespaard = 0;
   private waarnemer: IntersectionObserver;
   private maat: ResizeObserver;
   private readonly groot: boolean;
@@ -70,7 +75,6 @@ export class AioSter {
     this.renderer.setPixelRatio(this.groot ? Math.min(2, devicePixelRatio || 1) : Math.min(3, Math.max(2, devicePixelRatio || 1)));
     this.camera.position.z = 1 / (this.vulling * TAN);
 
-    bol ??= new THREE.SphereGeometry(1, 128, 96);
     this.u = {
       uTijd: { value: 0 }, uOgen: { value: 1 }, uBlij: { value: 0 }, uLach: { value: .25 }, uMond: { value: 0 },
       uGloed: { value: 1 }, uWervel: { value: .15 }, uDim: { value: 0 }, uAccent: { value: 0 }, uVeel: { value: 1 },
@@ -79,7 +83,7 @@ export class AioSter {
       uC1: { value: v3(VIER[0]) }, uC2: { value: v3(VIER[1]) }, uC3: { value: v3(VIER[2]) }, uC4: { value: v3(VIER[3]) },
       uCamObj: { value: new THREE.Vector3() },
     };
-    this.lijf = new THREE.Mesh(bol, new THREE.ShaderMaterial({
+    this.lijf = new THREE.Mesh(bolVoor(opties.grootte), new THREE.ShaderMaterial({
       uniforms: this.u, vertexShader: lijfVertex, fragmentShader: lijfFragment, defines: this.groot ? {} : { KLEIN: 1 },
     }));
     this.scene.add(this.lijf);
@@ -168,6 +172,12 @@ export class AioSter {
 
   teken(tijd: number, dt: number): void {
     if (!this.inBeeld || !this.canvas.getClientRects().length) return;
+    if (!this.groot) {
+      this.opgespaard += dt;
+      if (this.opgespaard < KLEIN_INTERVAL) return;
+      dt = this.opgespaard;
+      this.opgespaard = 0;
+    }
     const s = stemming;
     const label = huidigLabel();
     if (this.vonken && label !== this.vonkLabel) this.kleurVonken(label);

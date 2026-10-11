@@ -7,7 +7,7 @@
  */
 import { meld, zetLabel, type AioLabel } from '@/scripts/aio-wezen/brein';
 
-const CHAT_URL =import.meta.env.PUBLIC_AIO_CHAT_URL || 'https://aio-chat.cool-shape-7891.workers.dev/chat';
+const CHAT_URL = import.meta.env.PUBLIC_AIO_CHAT_URL || 'https://aio-chat.cool-shape-7891.workers.dev/chat';
 const OPSLAG = 'aio-chat';
 const MAX_BERICHTEN = 21;
 
@@ -176,7 +176,7 @@ async function vraag(tekst: string): Promise<void> {
         } else if (data.klaar) {
           klaar = true;
           meld('klaar');
-          berichten =[...verzoek, { role: 'assistant', content: data.inhoud }];
+          berichten = [...verzoek, { role: 'assistant', content: data.inhoud }];
           bewaar();
           opmaak(antwoord, tekstVan(berichten[berichten.length - 1]));
           antwoord.classList.remove('laadt');
@@ -215,7 +215,7 @@ function open(): void {
 }
 
 /**
- * AIO als ster (src/scripts/aio-wezen): de menuknop krijgt hem als de pagina rustig is, de chatkop en het
+ * AIO als ster (src/scripts/aio-wezen): de menuknop krijgt hem na de eerste interactie, de chatkop en het
  * welkomstvenster pas bij het openen van de chat. Zonder WebGL of bij prefers-reduced-motion blijft de CSS-bol.
  */
 async function laadSterren(chat: boolean): Promise<void> {
@@ -260,11 +260,19 @@ if (labelMenu) {
   new MutationObserver(() => zetLabel((labelMenu.dataset.gekozen as AioLabel | undefined) ?? 'aio'))
     .observe(labelMenu, { attributes: true, attributeFilter: ['data-gekozen'] });
 }
+// De menuster start pas na de eerste interactie of na 5 s, zodat hij de laadfase van de pagina niet verzwaart.
 // Safari kent requestIdleCallback niet: daar een korte wachttijd.
-const inRust = (f: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(f, { timeout: 3000 }) : setTimeout(f, 1200));
-const laadMenuster = () => void laadSterren(false);
-if (document.readyState === 'complete') inRust(laadMenuster);
-else addEventListener('load', () => inRust(laadMenuster), { once: true });
+const inRust = (f: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
+const EERSTE_INTERACTIE = ['pointermove', 'scroll', 'touchstart', 'keydown'] as const;
+let menusterGestart = false;
+const startMenuster = () => {
+  if (menusterGestart) return;
+  menusterGestart = true;
+  EERSTE_INTERACTIE.forEach((e) => removeEventListener(e, startMenuster));
+  inRust(() => void laadSterren(false));
+};
+EERSTE_INTERACTIE.forEach((e) => addEventListener(e, startMenuster, { once: true, passive: true }));
+setTimeout(startMenuster, 5000);
 
 berichten = laad();
 toonGesprek();
