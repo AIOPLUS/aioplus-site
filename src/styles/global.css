@@ -244,6 +244,13 @@ nav.labels.labels[data-gekozen='tabplus'] { grid-template-columns: 0fr 1fr; grid
 .aio-knop::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgb(255 228 196 / .7); animation: aio-adem 3.2s var(--ease) infinite; pointer-events: none; }
 .aio-knop[aria-expanded='true']::after { animation: none; opacity: 0; }
 .aio-knop span { position: relative; }
+/* AIO als ster (src/scripts/aio-wezen): het canvas ligt over de CSS-bol; die blijft als terugval zonder WebGL of bij prefers-reduced-motion. */
+.aio-ster { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hoofdmenu .aio-knop.heeft-ster, .hoofdmenu .aio-knop.heeft-ster:hover, .chat-bol.heeft-ster { background: transparent; color: transparent; }
+.aio-knop.heeft-ster span { visibility: hidden; }
+.chat-ster { position: relative; width: 200px; height: 200px; margin: -30px 0 -22px -46px; }
+.chat-ster:not(.heeft-ster) { display: none; }
+.chat-ster .aio-ster { pointer-events: auto; cursor: pointer; }
 @keyframes aio-adem { 0% { scale: 1; opacity: .7; } 70%, 100% { scale: 1.5; opacity: 0; } }
 
 .chat { position: fixed; z-index: 33; left: 50%; top: calc(50% + 29px); translate: -50% -50%; width: min(600px, calc(100vw - 32px)); height: min(680px, calc(100svh - 110px)); display: flex; flex-direction: column;

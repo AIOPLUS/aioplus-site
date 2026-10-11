@@ -3,7 +3,10 @@
  * Vragen gaan naar de Worker in workers/aio-chat (Cloudflare), die Claude aanroept en het antwoord terugstreamt.
  * Het gesprek staat alleen in deze browser (sessionStorage, weg na het sluiten van het tabblad). De antwoorden gaan
  * ongewijzigd mee terug naar de Worker, ook de onzichtbare denkblokken: zo blijft het gesprek geldig voor Claude.
+ * AIO zelf is een levende ster (src/scripts/aio-wezen); de chat meldt hem wat er gebeurt (typen, wachten, antwoord, fout).
  */
+import { meld, zetLabel, type AioLabel } from '@/scripts/aio-wezen/brein';
+
 const CHAT_URL = import.meta.env.PUBLIC_AIO_CHAT_URL || 'https://aio-chat.cool-shape-7891.workers.dev/chat';
 const OPSLAG = 'aio-chat';
 const MAX_BERICHTEN = 21;
@@ -134,12 +137,14 @@ async function vraag(tekst: string): Promise<void> {
     });
   };
   const mislukt = (soort: string) => {
+    meld('fout');
     antwoord.remove();
     bubbel('melding', MELDINGEN[soort] ?? MELDINGEN.storing);
     // De vraag telt niet mee in het gesprek; zet hem terug in het veld om opnieuw te proberen.
     if (soort === 'storing') veld.value = vraagTekst;
   };
 
+  meld('wacht');
   try {
     const res = await fetch(CHAT_URL, {
       method: 'POST',
@@ -165,10 +170,12 @@ async function vraag(tekst: string): Promise<void> {
         const data = JSON.parse(regel);
         if (typeof data.t === 'string') {
           antwoord.classList.remove('laadt');
+          meld('praat');
           tekstTotNu += data.t;
           teken();
         } else if (data.klaar) {
           klaar = true;
+          meld('klaar');
           berichten = [...verzoek, { role: 'assistant', content: data.inhoud }];
           bewaar();
           opmaak(antwoord, tekstVan(berichten[berichten.length - 1]));
@@ -203,6 +210,20 @@ function open(): void {
   document.documentElement.classList.add('chat-open');
   requestAnimationFrame(() => venster.classList.add('zichtbaar'));
   veld.focus({ preventScroll: true });
+  meld('open');
+  void laadSterren(true);
+}
+
+/**
+ * AIO als ster (src/scripts/aio-wezen): de menuknop krijgt hem na de eerste interactie, de chatkop en het
+ * welkomstvenster pas bij het openen van de chat. Zonder WebGL of bij prefers-reduced-motion blijft de CSS-bol.
+ */
+async function laadSterren(chat: boolean): Promise<void> {
+  const { maakAio } = await import('@/scripts/aio-wezen');
+  maakAio(knop, { grootte: 'klein' });
+  if (!chat) return;
+  maakAio($<HTMLElement>('.chat-bol', venster), { grootte: 'klein' });
+  maakAio($<HTMLElement>('.chat-ster', venster), { grootte: 'groot', invoer: veld, porren: true });
 }
 
 function sluit(): void {
@@ -231,7 +252,27 @@ vorm.addEventListener('submit', (e) => { e.preventDefault(); void vraag(veld.val
 veld.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); void vraag(veld.value); }
 });
-veld.addEventListener('input', pasHoogteAan);
+veld.addEventListener('input', () => { pasHoogteAan(); meld('typt'); });
+
+// AIO kleurt mee met het gekozen label (heelal.ts zet data-gekozen op het labelmenu).
+const labelMenu = document.getElementById('labels');
+if (labelMenu) {
+  new MutationObserver(() => zetLabel((labelMenu.dataset.gekozen as AioLabel | undefined) ?? 'aio'))
+    .observe(labelMenu, { attributes: true, attributeFilter: ['data-gekozen'] });
+}
+// De menuster start pas na de eerste interactie of na 5 s, zodat hij de laadfase van de pagina niet verzwaart.
+// Safari kent requestIdleCallback niet: daar een korte wachttijd.
+const inRust = (f: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(f, { timeout: 2000 }) : setTimeout(f, 300));
+const EERSTE_INTERACTIE = ['pointermove', 'scroll', 'touchstart', 'keydown'] as const;
+let menusterGestart = false;
+const startMenuster = () => {
+  if (menusterGestart) return;
+  menusterGestart = true;
+  EERSTE_INTERACTIE.forEach((e) => removeEventListener(e, startMenuster));
+  inRust(() => void laadSterren(false));
+};
+EERSTE_INTERACTIE.forEach((e) => addEventListener(e, startMenuster, { once: true, passive: true }));
+setTimeout(startMenuster, 5000);
 
 berichten = laad();
 toonGesprek();
