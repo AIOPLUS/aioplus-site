@@ -11,6 +11,6 @@ Website van AIO Plus, live op https://www.aioplus.ai. De centrale instructies (b
 - **Pagina**: `src/pages/index.astro`; lay-out en zoekmachinegegevens in `src/layouts/BaseLayout.astro`.
 - **Heelal, scroll-animaties en inzoomen**: `src/scripts/heelal.ts` (Three.js, alles in één shader).
 - **AIO als ster** (mascotte, Three.js): `src/scripts/aio-wezen/` (brein, ster, shaders). Eigenaar van het onderdeel is de chat "AIO Plus - Agent" (ontwerp in de hub: `docs/agent/MASCOTTE.md`); hetzelfde onderdeel komt in de app, dus wijzigingen melden.
-- **AIO-chat**: knop en venster in `src/scripts/aio-chat.ts`; de Worker met de systeemprompt, plafonds en sleutels in `workers/aio-chat/` (eigen README, eigen check en uitrol via `.github/workflows/chat.yml`).
+- **AIO als gids** (vervangt het chatvenster): wat AIO zegt en doet in `src/scripts/aio-gids.ts`, de gids zelf in `src/scripts/aio-wezen/gids.ts` (eigenaar "AIO Plus - Agent", ontwerp in de hub: `docs/agent/AIO-GIDS.md`); de Worker met de systeemprompt, plafonds en sleutels in `workers/aio-chat/` (eigen README, eigen check en uitrol via `.github/workflows/chat.yml`).
 - **Opmaak**: `src/styles/global.css`, tokens in `src/styles/tokens.css`.
 - **CI**: `.github/workflows/ci.yml` draait `npm run check` op elke pull request; `deploy.yml` zet main live op GitHub Pages.
