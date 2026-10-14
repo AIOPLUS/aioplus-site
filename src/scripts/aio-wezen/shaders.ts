@@ -44,19 +44,25 @@ const RUIS = /* glsl */ `
 const GEZICHT = /* glsl */ `
   float sdRondBox(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }
   float sdBoog(vec2 p, vec2 c, float R, float dik, float boven){ vec2 q=p-c; float d=abs(length(q)-R)-dik; return boven>0.5?max(d,-q.y):max(d,q.y); }
-  // x: vorm van ogen en mond; y: lichtjes in de ogen
-  vec2 gezicht(vec3 p, vec3 f, float ogen, float blij, float lach, float mond, float klein){
-    if (dot(p,f) < 0.25) return vec2(1.0);
+  // x: vorm van ogen en mond; y: lichtjes in de ogen; z: iris; w: pupil. De iris en pupil kijken mee (blik, -1..1).
+  vec4 gezicht(vec3 p, vec3 f, float ogen, float blij, float lach, float mond, float klein, vec2 blik){
+    if (dot(p,f) < 0.25) return vec4(1.0);
     vec3 rechts=normalize(cross(vec3(0.0,1.0,0.0),f)); vec3 op=cross(f,rechts);
     vec2 q=vec2(dot(p,rechts),dot(p,op)) / mix(1.0,1.3,klein);
-    float d=1.0, glim=1.0, open=max(ogen,0.06);
+    float d=1.0, glim=1.0, iris=1.0, pupil=1.0, open=max(ogen,0.06);
+    // klein (menuknop): rondere, iets grotere ogen, zodat de blik op 40 px leesbaar blijft
+    vec2 maat=mix(vec2(0.07,0.105),vec2(0.078,0.1),klein);
     for (int i=0;i<2;i++){
       vec2 c=vec2(i==0?-0.21:0.21,0.08);
-      float oog=sdRondBox(q-c,vec2(0.052,0.1*open),0.05*min(1.0,open+0.2));
+      float oog=sdRondBox(q-c,vec2(maat.x,maat.y*open),maat.x*0.96*min(1.0,open+0.2));
       float boog=sdBoog(q,c-vec2(0.0,0.045),0.072,0.022,1.0);
       d=min(d,mix(oog,boog,blij));
-      float g=length(q-c-vec2(-0.016,0.046*min(open,1.0)))-0.019;
-      glim=min(glim,g+step(open,0.55)+blij);
+      vec2 ic=c+blik*vec2(maat.x*0.42,maat.y*0.45*min(open,1.0));
+      float li=length(q-ic);
+      iris=min(iris,max(li-maat.x*0.9,oog)+blij+step(open,0.3));
+      pupil=min(pupil,max(li-maat.x*0.4,oog)+blij+step(open,0.3));
+      float g=length(q-ic-vec2(-0.3,0.42)*maat.x)-maat.x*0.27;
+      glim=min(glim,max(g,oog)+step(open,0.55)+blij);
     }
     float l=abs(lach)*(1.0-klein*(1.0-blij));
     if (l>0.05){
@@ -67,7 +73,7 @@ const GEZICHT = /* glsl */ `
     }
     float m=mond*(1.0-klein);
     if (m>0.03) d=min(d,sdRondBox(q-vec2(0.0,-0.16),vec2(0.04+0.018*m,0.01+0.042*m),0.028+0.01*m));
-    return vec2(d,glim);
+    return vec4(d,glim,iris,pupil);
   }`;
 
 export const lijfVertex = /* glsl */ `
@@ -77,6 +83,7 @@ export const lijfVertex = /* glsl */ `
 export const lijfFragment = /* glsl */ `
   uniform float uTijd, uOgen, uBlij, uLach, uMond, uGloed, uWervel, uDim, uAccent, uVeel, uLicht;
   uniform vec3 uFace, uKleur, uC1, uC2, uC3, uC4, uCamObj;
+  uniform vec2 uBlik;
   varying vec3 vP; varying vec3 vN; varying vec3 vV;
   ${RUIS}
   ${GEZICHT}
@@ -115,7 +122,8 @@ export const lijfFragment = /* glsl */ `
     vec3 dir=normalize(p-uCamObj);
     vec3 m=p-dir*dot(p,dir);
     float r=length(m);
-    float kern=exp(-r*r*3.0);
+    // het hart vult het grootste deel van de ster (op 40 px bijna de hele bol), zodat de labelkleur overheerst
+    float kern=exp(-r*r*mix(1.9,1.15,klein));
     float draai=t*(0.3+uWervel*1.2);
     float hk=draai+r*(2.5+uWervel*4.0);
     vec2 mr=mat2(cos(hk),-sin(hk),sin(hk),cos(hk))*m.xy;
@@ -126,16 +134,18 @@ export const lijfFragment = /* glsl */ `
     float w1=pow(max(cos(a4),0.0),3.0), w2=pow(max(cos(a4-1.5708),0.0),3.0), w3=pow(max(cos(a4-3.1416),0.0),3.0), w4=pow(max(cos(a4-4.7124),0.0),3.0);
     vec3 vier=(uC1*w1+uC2*w2+uC3*w3+uC4*w4)/(w1+w2+w3+w4+1e-4);
     vec3 tint=mix(uKleur,vier,uVeel);
-    float plasma=pow(kern,1.25)*(0.78+0.22*sliert)*max(uAccent,uVeel*0.9);
-    vec3 heet=mix(tint*1.3+0.04,vec3(1.0,0.97,0.93),0.38*pow(kern,3.0));
-    kleur=mix(kleur,heet,clamp(plasma,0.0,1.0)*0.86*smoothstep(0.0,0.35,mu));
-    kleur*=mix(1.0,0.8+0.4*gran,(1.0-klein)*clamp(plasma,0.0,1.0)*0.9);
+    float plasma=pow(kern,1.1)*(0.74+0.26*sliert)*max(uAccent,uVeel*0.9);
+    // diep in het hart de volle labelkleur, naar het midden heter en lichter; een donkerdere zoom geeft diepte
+    vec3 diepte=mix(tint*0.75,tint*1.1+0.06,smoothstep(0.2,0.9,kern));
+    vec3 heet=mix(diepte,vec3(1.0,0.97,0.93),mix(0.3,0.16,klein)*pow(kern,4.0));
+    kleur=mix(kleur,heet,clamp(plasma*1.3,0.0,1.0)*mix(0.95,0.98,klein)*smoothstep(0.0,0.3,mu));
+    kleur*=mix(1.0,0.86+0.28*gran,(1.0-klein)*clamp(plasma,0.0,1.0)*0.8);
     // scherpe chromosfeerrand en een dunne rand in de labelkleur
     kleur+=vec3(1.0,0.86,0.66)*pow(rand,9.0)*1.1*(1.0-uLicht*0.7);
-    kleur+=mix(vec3(1.0,0.7,0.4),tint,max(uAccent,uVeel)*0.6)*pow(rand,4.0)*0.18*(1.0-uLicht);
+    kleur+=mix(vec3(1.0,0.7,0.4),tint,max(uAccent,uVeel)*0.75)*pow(rand,4.0)*mix(0.22,0.45,klein)*(1.0-uLicht*0.6);
     kleur*=(0.97+0.06*uGloed)*mix(1.0,0.55,uDim);
     // gezicht: ogen als zonnevlekken met een lichte zoom
-    vec2 g=gezicht(p,uFace,uOgen,uBlij,uLach,uMond,klein);
+    vec4 g=gezicht(p,uFace,uOgen,uBlij,uLach,uMond,klein,uBlik);
     float aa=max(fwidth(g.x),1e-4);
     float binnen=1.0-smoothstep(-aa,aa,g.x);
     float diep=smoothstep(0.0,0.035,-g.x);
@@ -143,8 +153,19 @@ export const lijfFragment = /* glsl */ `
     vlek=mix(vlek,tint*0.25,0.15*max(uAccent,uVeel));
     kleur=mix(kleur,vlek,binnen);
     kleur+=vec3(1.0,0.85,0.6)*exp(-abs(g.x)/0.012)*(1.0-binnen)*0.35*(1.0-klein);
+    // iris: warm amber met een glans van de labelkleur, lichter naar de pupil en een donkere rand (limbus)
+    float ai=max(fwidth(g.z),1e-4);
+    float irisIn=1.0-smoothstep(-ai,ai,g.z);
+    float irisR=smoothstep(-0.014,0.0,g.z);
+    // fijne ringen in de iris, zodat hij niet vlak oogt
+    float vezel=0.86+0.14*sin(g.z*700.0);
+    vec3 irisKleur=mix(vec3(1.0,0.7,0.36),tint*1.2+0.12,0.6*max(uAccent,uVeel))*vezel;
+    irisKleur=mix(irisKleur*1.2,irisKleur*0.3,irisR);
+    kleur=mix(kleur,irisKleur,irisIn);
+    float ap=max(fwidth(g.w),1e-4);
+    kleur=mix(kleur,vec3(0.025,0.012,0.008),1.0-smoothstep(-ap,ap,g.w));
     float ag=max(fwidth(g.y),1e-4);
-    kleur=mix(kleur,vec3(1.0,0.97,0.92)*1.2,(1.0-smoothstep(-ag,ag,g.y))*0.85);
+    kleur=mix(kleur,vec3(1.0,0.98,0.95)*1.3,(1.0-smoothstep(-ag,ag,g.y))*0.9);
     gl_FragColor=vec4(kleur,1.0);
   }`;
 

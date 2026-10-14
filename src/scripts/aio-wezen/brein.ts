@@ -1,5 +1,5 @@
 /**
- * Het brein van AIO: er is maar één AIO, ook als hij op meer plekken tegelijk staat (menuknop, chatkop, chatvenster).
+ * Het brein van AIO: er is maar één AIO, ook als hij op meer plekken tegelijk staat (menuknop, chat, de gids).
  * Gebeurtenissen (typen, wachten op Claude, antwoord, fout, porren) en stilte bepalen de staat; elke ster op de pagina
  * leest zijn stemming hier. Staten en gedrag: hub docs/agent/AIO-KARAKTER.md.
  */
@@ -56,14 +56,17 @@ function activiteit(): void {
   laatsteActiviteit = t;
 }
 
-/** Meld een gebeurtenis aan AIO. */
-export function meld(g: AioGebeurtenis): void {
+/**
+ * Meld een gebeurtenis aan AIO. Bij 'praat' zonder stroom (het hele antwoord komt in één keer) geeft duur in seconden
+ * aan hoe lang AIO praat; meld daarna 'klaar'.
+ */
+export function meld(g: AioGebeurtenis, duur = 0): void {
   const t = nu();
   activiteit();
   switch (g) {
     case 'typt': laatsteToets = t; break;
     case 'wacht': wacht = true; break;
-    case 'praat': wacht = false; laatsteStukje = t; break;
+    case 'praat': wacht = false; laatsteStukje = t + duur; break;
     case 'klaar': wacht = false; laatsteStukje = -99; tijdelijk = { staat: 'blij', tot: t + 1.2 }; break;
     case 'fout': wacht = false; laatsteStukje = -99; tijdelijk = { staat: 'oeps', tot: t + 1.3 }; break;
     case 'actie': tijdelijk = { staat: 'blij', tot: t + 1.6 }; knijpV += 5; break;
@@ -78,10 +81,20 @@ export function meld(g: AioGebeurtenis): void {
 
 export const huidigLabel = (): AioLabel => label;
 
+/** Waar AIO naar kijkt als hij iets aanwijst (de gids); null = de muis of rondkijken. */
+let kijkdoel: Element | null = null;
+export const huidigKijkdoel = (): Element | null => kijkdoel;
+export function zetKijkdoel(el: Element | null): void {
+  kijkdoel = el;
+  if (el) activiteit();
+}
+
 /** Zet het label waar de gebruiker is ('aio' = alle labels samen). */
-export function zetLabel(l: AioLabel): void {
+export function zetLabel(l: AioLabel, stil = false): void {
   if (l === label) return;
   label = l;
+  // stil: bij het laden van een pagina meteen de goede kleur, zonder blij op te springen
+  if (stil) { const hex = l === 'aio' ? null : LABELKLEUR[l]; stemming.accent = hex === null ? 0 : 1; stemming.veel = hex === null ? 1 : 0; if (hex !== null) stemming.kleur = rgb(hex); return; }
   knijpV += 4;
   tijdelijk = { staat: 'blij', tot: nu() + 1 };
 }
@@ -112,7 +125,7 @@ export function stap(tijd: number, dt: number): void {
   const s = stemming;
   const staat = kiesStaat(nu());
   // ook als attribuut op <html>, zodat opmaak en tests de staat kunnen lezen
-  if (staat !== s.staat) document.documentElement.dataset.aioStaat = staat;
+  if (staat !== s.staat && typeof document !== 'undefined') document.documentElement.dataset.aioStaat = staat;
   s.staat = staat;
   const doel = DOEL[staat];
   const k = 1 - Math.exp(-dt * (staat === 'oeps' ? 14 : 6));

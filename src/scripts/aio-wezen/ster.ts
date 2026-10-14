@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import { coronaFragment, lijfFragment, lijfVertex, vlakVertex, vonkFragment, vonkVertex } from './shaders';
-import { huidigLabel, LABELKLEUR, meld, stap, stemming, volgActiviteit, type AioLabel } from './brein';
+import { huidigKijkdoel, huidigLabel, LABELKLEUR, meld, stap, stemming, volgActiviteit, type AioLabel } from './brein';
 
 export type AioOpties = {
   grootte: 'klein' | 'groot';
@@ -23,12 +23,32 @@ const FOV = 30, TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
 // Klein (34–40 px) is een grovere bol genoeg: minder werk bij het opstarten en per beeld.
 const bollen: Partial<Record<'klein' | 'groot', THREE.SphereGeometry>> = {};
 const bolVoor = (g: 'klein' | 'groot') => (bollen[g] ??= g === 'klein' ? new THREE.SphereGeometry(1, 48, 32) : new THREE.SphereGeometry(1, 128, 96));
-/** Kleine sterren tekenen op ongeveer 30 beelden per seconde: op 40 px zie je geen verschil, de batterij wel. */
+/**
+ * Kleine sterren tekenen op ongeveer 30 beelden per seconde: op 40 px zie je geen verschil, de batterij wel. Is AIO in
+ * rust en beweegt de muis niet, dan 15 per seconde; slaapt hij, dan 8 (alleen ademen). De knopster staat op elke
+ * pagina en blijft vaak uren open.
+ */
 const KLEIN_INTERVAL = 1 / 31;
+function kleinInterval(): number {
+  const s = stemming.staat;
+  if (s === 'slaapt') return 1 / 8;
+  if ((s === 'rust' || s === 'doezelt') && performance.now() / 1000 - muis.laatst > 2) return 1 / 15;
+  return KLEIN_INTERVAL;
+}
+/**
+ * Grote sterren (de gids zweeft lang mee): elk beeld als hij beweegt, praat of de muis beweegt; in rust 30 per seconde,
+ * slapend 15.
+ */
+function grootInterval(): number {
+  const s = stemming.staat;
+  if (s === 'slaapt') return 1 / 15;
+  if ((s === 'rust' || s === 'doezelt') && performance.now() / 1000 - muis.laatst > 2 && !huidigKijkdoel()) return KLEIN_INTERVAL;
+  return 0;
+}
 
 // ---------- gedeelde lus ----------
 const sterren = new Set<AioSter>();
-const muis = { x: 0, y: 0, actief: false };
+const muis = { x: 0, y: 0, actief: false, laatst: 0 };
 let lusId = 0, vorige = 0, tijd = 0;
 
 function lus(ms: number): void {
@@ -44,7 +64,7 @@ function zetLusKlaar(): void {
   if (lusKlaar) return;
   lusKlaar = true;
   document.addEventListener('visibilitychange', start);
-  addEventListener('pointermove', (e) => { muis.x = e.clientX; muis.y = e.clientY; muis.actief = true; }, { passive: true });
+  addEventListener('pointermove', (e) => { muis.x = e.clientX; muis.y = e.clientY; muis.actief = true; muis.laatst = performance.now() / 1000; }, { passive: true });
   document.documentElement.addEventListener('pointerleave', () => { muis.actief = false; });
   volgActiviteit();
 }
@@ -61,6 +81,8 @@ export class AioSter {
   private kijk = new THREE.Vector3(0, 0, 1);
   private vonkLabel: AioLabel | null = null;
   private opgespaard = 0;
+  private sprong = new THREE.Vector2();
+  private sprongOver = 1;
   private waarnemer: IntersectionObserver;
   private maat: ResizeObserver;
   private readonly groot: boolean;
@@ -79,7 +101,7 @@ export class AioSter {
       uTijd: { value: 0 }, uOgen: { value: 1 }, uBlij: { value: 0 }, uLach: { value: .25 }, uMond: { value: 0 },
       uGloed: { value: 1 }, uWervel: { value: .15 }, uDim: { value: 0 }, uAccent: { value: 0 }, uVeel: { value: 1 },
       uLicht: { value: opties.achtergrond === 'licht' ? 1 : 0 },
-      uFace: { value: new THREE.Vector3(0, 0, 1) }, uKleur: { value: v3(0xffe6c8) },
+      uFace: { value: new THREE.Vector3(0, 0, 1) }, uBlik: { value: new THREE.Vector2() }, uKleur: { value: v3(0xffe6c8) },
       uC1: { value: v3(VIER[0]) }, uC2: { value: v3(VIER[1]) }, uC3: { value: v3(VIER[2]) }, uC4: { value: v3(VIER[3]) },
       uCamObj: { value: new THREE.Vector3() },
     };
@@ -166,18 +188,18 @@ export class AioSter {
     if (s === 'luistert' && this.opties.invoer) { const i = this.opties.invoer.getBoundingClientRect(); return naar(i.left + i.width * .3, i.top + i.height / 2); }
     if (s === 'denkt') return new THREE.Vector3(.3, .38, 1);
     if (s === 'slaapt' || s === 'doezelt') return new THREE.Vector3(0, -.25, 1);
+    const doel = huidigKijkdoel();
+    if (doel?.isConnected) { const d = doel.getBoundingClientRect(); return naar(d.left + d.width / 2, d.top + d.height / 2); }
     if (muis.actief) return naar(muis.x, muis.y);
     return new THREE.Vector3(Math.sin(tijd * .35) * .18, Math.sin(tijd * .23) * .08, 1);
   }
 
   teken(tijd: number, dt: number): void {
     if (!this.inBeeld || !this.canvas.getClientRects().length) return;
-    if (!this.groot) {
-      this.opgespaard += dt;
-      if (this.opgespaard < KLEIN_INTERVAL) return;
-      dt = this.opgespaard;
-      this.opgespaard = 0;
-    }
+    this.opgespaard += dt;
+    if (this.opgespaard < (this.groot ? grootInterval() : kleinInterval())) return;
+    dt = this.opgespaard;
+    this.opgespaard = 0;
     const s = stemming;
     const label = huidigLabel();
     if (this.vonken && label !== this.vonkLabel) this.kleurVonken(label);
@@ -187,6 +209,11 @@ export class AioSter {
     (u.uKleur.value as THREE.Vector3).set(...s.kleur);
     this.kijk.lerp(this.kijkdoel(tijd).normalize(), 1 - Math.exp(-dt * 9));
     (u.uFace.value as THREE.Vector3).copy(this.kijk).normalize();
+    // de pupillen kijken extra mee (het gezicht draait maar een stukje), met af en toe een kleine oogsprong
+    this.sprongOver -= dt;
+    if (this.sprongOver <= 0) { this.sprong.set((Math.random() - .5) * .35, (Math.random() - .5) * .3); this.sprongOver = .6 + Math.random() * 2.2; }
+    const bx = THREE.MathUtils.clamp(this.kijk.x / .45 + this.sprong.x, -1, 1), by = THREE.MathUtils.clamp(this.kijk.y / .4 + this.sprong.y, -1, 1);
+    (u.uBlik.value as THREE.Vector2).lerp(new THREE.Vector2(bx, by), 1 - Math.exp(-dt * 22));
 
     const q = s.knijp * (this.groot ? 1 : .3);
     const adem = Math.sin(tijd * (s.staat === 'slaapt' ? 1.1 : 1.8)) * (s.staat === 'slaapt' ? .025 : .012) * (this.groot ? 1 : .4);
@@ -207,6 +234,11 @@ export class AioSter {
     this.lijf.updateMatrixWorld();
     (u.uCamObj.value as THREE.Vector3).copy(this.camera.position).applyMatrix4(this.lijf.matrixWorld.clone().invert());
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Wissel tussen de lichte en de donkere uitvoering (bijvoorbeeld als de gebruiker de weergave wisselt). */
+  zetAchtergrond(achtergrond: 'donker' | 'licht'): void {
+    this.u.uLicht.value = achtergrond === 'licht' ? 1 : 0;
   }
 
   stop(): void {
