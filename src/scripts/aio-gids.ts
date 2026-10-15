@@ -1,7 +1,7 @@
 /**
  * AIO als gids op aioplus.ai (vervangt het chatvenster). De ronde AIO-knop midden in het menu stuurt AIO op pad of haalt
- * hem terug. AIO reist mee terwijl je scrolt, vertelt per onderdeel kort wat je ziet, wijst aan waar je moet klikken en
- * kan het na akkoord zelf doen. Vragen gaan naar de Worker in workers/aio-chat (Claude); die kan één actie voorstellen
+ * hem terug. AIO komt alleen op een klik in beeld (besluit Jordan 15-10-2026: rust op de site; de rondleiding alleen op
+ * verzoek). Hij beantwoordt vragen, wijst aan waar je moet klikken en kan het na akkoord zelf doen. Vragen gaan naar de Worker in workers/aio-chat (Claude); die kan één actie voorstellen
  * met een label als [[label:reviewplus]], [[demo]] of [[labels]] aan het eind van het antwoord.
  *
  * Het gesprek staat alleen in deze browser (sessionStorage). De antwoorden gaan ongewijzigd mee terug naar de Worker, ook
@@ -13,8 +13,6 @@ import type { AioGids, GidsKnop } from '@/scripts/aio-wezen/gids';
 
 const CHAT_URL = import.meta.env.PUBLIC_AIO_CHAT_URL || 'https://aio-chat.cool-shape-7891.workers.dev/chat';
 const GESPREK = 'aio-chat';
-const GEZIEN = 'aio-gids-gezien';
-const STAND = 'aio-gids';
 const MAX_BERICHTEN = 21;
 
 type Blok = { type: string; text?: string };
@@ -61,21 +59,12 @@ function laadGids(): Promise<AioGids> {
     gids = new AioGids({
       menuKnop,
       opVraag: (v) => void vraag(v),
-      opZichtbaar: (aan) => schrijf('local', STAND, aan ? 'aan' : 'uit'),
       plaatshouder: 'Vraag het AIO',
       noot: 'AIO kan fouten maken. Vul geen persoonlijke gegevens in.',
     });
     return gids;
   });
   return laden;
-}
-
-const gezien = new Set<string>(lees<string[]>('session', GEZIEN, []));
-function eersteKeer(id: string): boolean {
-  if (gezien.has(id)) return false;
-  gezien.add(id);
-  schrijf('session', GEZIEN, [...gezien]);
-  return true;
 }
 
 // ---------- voorstellen: "klik hier", of AIO doet het na akkoord ----------
@@ -118,15 +107,13 @@ function stelVoor(g: AioGids, el: HTMLElement, opties: { knop: string; wat: stri
 /** Naar een label: in het labelmenu de knop "Ontdek", anders het label in het menu bovenaan. */
 function naarLabel(g: AioGids, id: LabelId, focus = false): void {
   const l = label(id);
-  // het hoofdstuk zelf hoeft AIO daarna niet nog eens aan te kondigen
-  eersteKeer(`label-${id}`);
   const ontdek = $<HTMLElement>(`[data-zoom="${id}"]`);
   const opKaart = ontdek && ontdek.getBoundingClientRect().height > 0 && getComputedStyle(ontdek.closest('.inhoud') ?? ontdek).opacity !== '0' && !labelMenu?.dataset.gekozen;
   const el = opKaart ? ontdek : $<HTMLElement>(`.hoofdmenu [data-ga="${id}"]`)!;
   stelVoor(g, el, {
     knop: opKaart ? `Ontdek ${l.naam}` : `${l.naam}`,
     wat: opKaart ? `Dan zoom je in op ${l.naam}.` : `Dat staat bovenaan in het menu; dan ga je naar ${l.naam}.`,
-    klaar: `Dit is ${l.naam}. Scroll maar verder, ik vertel onderweg wat je ziet.`,
+    klaar: `Dit is ${l.naam}. Vraag gerust iets als je meer wilt weten.`,
     focus,
   });
 }
@@ -174,7 +161,7 @@ function rondleiding(g: AioGids, stap = 0): void {
     tekst: s.tekst,
     wijs: s.el,
     knoppen: [
-      { tekst: laatste ? 'Klaar' : 'Volgende', soort: 'akkoord', doe: () => (laatste ? g.zeg({ tekst: 'Scroll maar verder, ik vertel onderweg wat je ziet.', vluchtig: true }) : rondleiding(g, stap + 1)) },
+      { tekst: laatste ? 'Klaar' : 'Volgende', soort: 'akkoord', doe: () => (laatste ? g.zeg({ tekst: 'Dat was het. Ik ben er als je me nodig hebt.', vluchtig: true }) : rondleiding(g, stap + 1)) },
       ...(laatste ? [] : [{ tekst: 'Stop', doe: () => g.zeg({ tekst: 'Goed. Ik ben er als je me nodig hebt.', vluchtig: true }) }]),
     ],
   });
@@ -183,15 +170,15 @@ function rondleiding(g: AioGids, stap = 0): void {
 
 // ---------- groeten ----------
 
-function groet(g: AioGids, zelfGeroepen: boolean): void {
-  const ideeen: GidsKnop[] = [
-    { tekst: 'Leid me rond', doe: () => rondleiding(g) },
-    { tekst: 'Welk label past bij mij?', doe: () => kiesLabel(g, 'Waar wil je mee verder? Kies wat het meest past.') },
-    { tekst: 'Wat doet AIO Plus?', doe: () => void vraag('Wat doet AIO Plus?') },
-  ];
-  g.zeg(zelfGeroepen
-    ? { tekst: 'Hoi, ik ben AIO. Waar kan ik je mee helpen?', ideeen }
-    : { tekst: 'Hoi, ik ben AIO. Ik reis met je mee en vertel onderweg wat je ziet. Liever zelf rondkijken? Stuur me weg met het kruisje; je vindt me terug in het menu.', ideeen, vluchtig: true });
+function groet(g: AioGids): void {
+  g.zeg({
+    tekst: 'Hoi, ik ben AIO. Waar kan ik je mee helpen?',
+    ideeen: [
+      { tekst: 'Leid me rond', doe: () => rondleiding(g) },
+      { tekst: 'Welk label past bij mij?', doe: () => kiesLabel(g, 'Waar wil je mee verder? Kies wat het meest past.') },
+      { tekst: 'Wat doet AIO Plus?', doe: () => void vraag('Wat doet AIO Plus?') },
+    ],
+  });
 }
 
 // ---------- vragen aan Claude ----------
@@ -273,7 +260,7 @@ menuKnop.addEventListener('click', async () => {
   if (g.zichtbaar && (g.ballonIsOpen || !g.heropen())) { g.verberg(); return; }
   if (g.zichtbaar) return;
   g.toon({ focus: true });
-  groet(g, true);
+  groet(g);
 });
 
 /** De menuster (klein) laadt na de eerste interactie of na 5 s, zodat hij de laadfase van de pagina niet verzwaart. */
@@ -300,78 +287,5 @@ function volgLabel(): void {
   menuKnop.style.setProperty('--aio-k', id ? label(id).kleur : 'rgb(255 228 196)');
 }
 if (labelMenu) new MutationObserver(volgLabel).observe(labelMenu, { attributes: true, attributeFilter: ['data-gekozen'] });
-
-// ---------- meereizen: AIO vertelt per onderdeel kort wat je ziet ----------
-
-/**
- * AIO komt vanzelf uit het menu zodra de bezoeker begint te scrollen (niet bij het laden, niet als hij eerder is
- * weggestuurd, niet bij prefers-reduced-motion). Elk onderdeel vertelt hij één keer per bezoek.
- */
-const magVanzelf = () => beweging() && lees<string>('local', STAND, 'aan') !== 'uit';
-
-let laatsteVertel = 0, laatsteGebruik = 0;
-const gidsLaag = document.getElementById('aio-gids');
-for (const e of ['pointerdown', 'keydown'] as const) gidsLaag?.addEventListener(e, () => { laatsteGebruik = Date.now(); });
-menuKnop.addEventListener('click', () => { laatsteGebruik = Date.now(); });
-const wachtrij = new Set<string>();
-async function vertel(id: string, maak: (g: AioGids) => void): Promise<void> {
-  if (!magVanzelf() && !gids?.zichtbaar) return;
-  if (gezien.has(id) || bezig || wachtrij.has(id)) return;
-  // is de bezoeker met AIO bezig (vraag, voorstel, rondleiding), dan praat AIO er niet doorheen
-  if (Date.now() - laatsteGebruik < 20000 || gidsLaag?.matches(':focus-within')) return;
-  // niet door elkaar heen praten: een nieuw onderwerp wacht tot het vorige even te lezen was
-  const wacht = laatsteVertel + 4500 - Date.now();
-  if (wacht > 0) {
-    wachtrij.add(id);
-    setTimeout(() => { wachtrij.delete(id); void vertel(id, maak); }, wacht);
-    return;
-  }
-  laatsteVertel = Date.now();
-  const g = await laadGids();
-  if (!g.zichtbaar && !magVanzelf()) return;
-  if (!eersteKeer(id)) return;
-  if (!g.zichtbaar) g.toon();
-  maak(g);
-}
-
-let welkomGedaan = false;
-addEventListener('scroll', () => {
-  if (!welkomGedaan && scrollY > innerHeight * .35) {
-    welkomGedaan = true;
-    void vertel('welkom', (g) => groet(g, false));
-  }
-  // het labelmenu staat helemaal in beeld aan het eind van de reis
-  if (reis && !labelMenu?.dataset.gekozen && scrollY > reis.offsetTop + reis.offsetHeight - innerHeight * 1.12) {
-    void vertel('labels', (g) => kiesLabel(g, 'Dit zijn de vier labels van AIO Plus. Waar ben je naar op zoek? Dan wijs ik je de weg.'));
-  }
-}, { passive: true });
-
-// per label: bij het begin van het hoofdstuk en bij de afsluiting
-const waarnemer = new IntersectionObserver((items) => {
-  for (const e of items) {
-    if (!e.isIntersecting) continue;
-    const el = e.target as HTMLElement;
-    const hoofdstuk = el.closest<HTMLElement>('[data-hoofdstuk]');
-    const id = hoofdstuk?.dataset.hoofdstuk as LabelId | undefined;
-    if (!id) continue;
-    const l = label(id);
-    if (el.classList.contains('h-slot')) {
-      const knop = el.querySelector<HTMLAnchorElement>('a.knop');
-      if (knop) {
-        void vertel(`slot-${id}`, (g) => g.zeg({
-          tekst: `Wil je verder met ${l.naam}? Dan wijs ik je de weg.`,
-          ideeen: [
-            { tekst: knop.textContent?.replace('→', '').trim() ?? l.naam, doe: () => stelVoor(g, knop, { knop: knop.textContent?.replace('→', '').trim() ?? '', wat: 'Dan ga je verder op die site.', klaar: 'De pagina gaat open.', focus: true }) },
-            { tekst: 'Plan een demo', doe: () => naarDemo(g, true) },
-            { tekst: 'Alle labels', doe: () => naarLabels(g, true) },
-          ],
-        }));
-      }
-    } else {
-      void vertel(`label-${id}`, (g) => g.zeg({ tekst: `Dit is ${l.naam}. ${l.oms} Scroll verder: ik vertel onderweg wat het doet.`, vluchtig: true }));
-    }
-  }
-}, { threshold: .55 });
-document.querySelectorAll('[data-hoofdstuk] > .scene:first-child, [data-hoofdstuk] .h-slot').forEach((el) => waarnemer.observe(el));
 
 volgLabel();

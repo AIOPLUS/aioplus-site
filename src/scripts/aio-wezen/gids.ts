@@ -435,7 +435,7 @@ export class AioGids {
     // klikken op AIO: de ballon open of dicht
     if (this.ballonOpen) this.klapIn();
     else if (this.tekst.childNodes.length) this.openBallon();
-    else this.zeg({ tekst: 'Vraag me gerust iets, of scroll verder: ik vertel onderweg wat je ziet.' });
+    else this.zeg({ tekst: 'Vraag me gerust iets over AIO Plus en de labels.' });
   }
 
   // ---------- plaats en beweging ----------
