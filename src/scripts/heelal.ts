@@ -324,7 +324,6 @@ const labels = $<HTMLElement>('.labels');
 const panelen = [...document.querySelectorAll<HTMLElement>('.label')];
 const titel = $<HTMLElement>('h1');
 const hint = $<HTMLElement>('.hint');
-const tab = $<HTMLElement>('.tab span');
 const reis = $<HTMLElement>('.reis');
 const hoofdstukken = new Map([...document.querySelectorAll<HTMLElement>('[data-hoofdstuk]')].map((el) => [el.dataset.hoofdstuk as LabelId, el]));
 const menuKnoppen = [...document.querySelectorAll<HTMLButtonElement>('.hoofdmenu button[data-ga]')];
@@ -373,17 +372,16 @@ function stijlStap(nu: number, menuZichtbaar: boolean, rust: boolean): void {
   }
 }
 
-// ---------- rand, tabje en inzoomen ----------
-const NEUTRAAL = '#F3ECE1';
+// ---------- rand en inzoomen ----------
 let gekozen: LabelId | null = null, hoverLabel: LabelId | null = null, navHover: LabelId | null = null;
-let tabTekst = '', huidigMenu: LabelId | null | undefined;
-const zetRand = (kleur: string, kracht: number) => {
-  root.style.setProperty('--rand', kleur);
-  root.style.setProperty('--rand-kracht', String(kracht));
+let huidigMenu: LabelId | null | undefined, huidigeRand = '';
+const zetRand = (kleur: string) => {
+  if (kleur !== huidigeRand) root.style.setProperty('--rand', huidigeRand = kleur);
 };
-const zetTab = (tekst: string) => {
-  if (tekst !== tabTekst) tab.textContent = tabTekst = tekst;
-};
+/** Na een wissel (inzoomen, terug, nieuw formaat) nog even tekenen: de kwarten schuiven met een CSS-overgang. */
+let tekenTot = 0;
+const tekenEven = (ms = 1200) => { tekenTot = Math.max(tekenTot, performance.now() + ms); };
+addEventListener('resize', () => tekenEven());
 const gedrag = (): ScrollBehavior => (rustig ? 'auto' : 'smooth');
 const menuEind = () => reis.offsetTop + reis.offsetHeight - innerHeight;
 
@@ -409,6 +407,7 @@ function zoom(id: LabelId): void {
   panelen.forEach((p) => p.classList.toggle('gekozen', p.dataset.label === id));
   hoofdstukken.forEach((el, k) => { el.hidden = k !== id; });
   uniforms.uTint.value.set(labelVan(id).kleur);
+  tekenEven(1800);
   setTimeout(() => hoofdstuk.scrollIntoView({ behavior: gedrag() }), rustig ? 0 : 1100);
 }
 function terug(): void {
@@ -417,6 +416,7 @@ function terug(): void {
     delete labels.dataset.gekozen;
     panelen.forEach((p) => p.classList.remove('gekozen'));
     hoofdstukken.forEach((el) => { el.hidden = true; });
+    tekenEven(1800);
   };
   if (Math.abs(scrollY - menuEind()) < 4) { afronden(); return; }
   scrollTo({ top: menuEind(), behavior: gedrag() });
@@ -457,14 +457,19 @@ panelen.forEach((p) => {
 });
 
 // ---------- elk beeld ----------
-let klaar = false, laatsteNu = 0;
+// Rust (verbeterplan, hub docs/website/VERBETERPLAN.md): het stelsel draait en twinkelt alleen tijdens de intro en komt daarna
+// in ~2,5 s tot stilstand. Daarna beweegt het alleen nog als de bezoeker iets doet (scrollen, muis, inzoomen); dan pas wordt er
+// getekend. In de presentatie per label vervaagt het heelal, zodat de tekst op een effen achtergrond staat.
+const INTRO_EIND = 5.8;
+let klaar = false, laatsteNu = 0, tijd = 0, vorigeScroll = -1;
 function frame(nu: number): void {
   requestAnimationFrame(frame);
   if (document.hidden) { laatsteNu = nu; return; }
   const dt = Math.min(0.05, laatsteNu ? (nu - laatsteNu) / 1000 : 0.016);
   laatsteNu = nu;
   const t = (nu - start) / 1000;
-  const tijd = rustig ? 0 : t;
+  const snelheid = rustig ? 0 : 1 - glad(INTRO_EIND, INTRO_EIND + 2.5, t);
+  tijd += dt * snelheid;
   const v = scrollY / innerHeight;
   const s = Math.min(1, Math.max(0, v / 1.15));
   const hoofdstuk = gekozen ? hoofdstukken.get(gekozen)! : null;
@@ -482,7 +487,7 @@ function frame(nu: number): void {
   titel.style.opacity = String(1 - glad(0.02, 0.32, s));
   hint.style.opacity = klaar ? String(1 - glad(0, 0.12, s)) : '';
 
-  // rand en tabje: regenboog, of de kleur van het label onder de muis of het gekozen label
+  // rand: alleen de kleur van het label onder de muis of het gekozen label
   const actief = navHover || gekozen || (tekst > 0.6 ? hoverLabel : null);
   // de kwarten vullen het scherm: een stilliggende muis staat altijd op een kwart, dus alleen beweging pauzeert het wisselen
   stijlStap(nu, tekst > 0.9, Boolean(gekozen || navHover) || nu - laatsteMuis < MUIS_RUST_MS);
@@ -491,16 +496,24 @@ function frame(nu: number): void {
     menuKnoppen.forEach((b) => b.setAttribute('aria-current', String(b.dataset.ga === gekozen)));
   }
   root.classList.toggle('label-kleur', Boolean(actief));
-  if (actief) { zetRand(labelVan(actief).kleur, 1); zetTab(labelVan(actief).naam); }
-  else { zetRand(NEUTRAAL, tekst > 0.6 ? 0.7 : 0.5); zetTab(tekst > 0.6 ? 'Labels' : 'AIO Plus'); }
-  root.style.setProperty('--voortgang', String(Math.min(1, scrollY / Math.max(1, root.scrollHeight - innerHeight))));
+  if (actief) zetRand(labelVan(actief).kleur);
   root.style.setProperty('--gloed', String(gekozen ? glad(0, 0.8, c) : 0));
 
   if (!renderer) return;
+  // in de presentatie per label vervaagt het heelal; helemaal weg = niet meer tekenen
+  const weg = gekozen ? glad(0.25, 0.9, c) : 0;
+  canvas.style.opacity = weg ? String(1 - weg) : '';
+  const wegDoel = gekozen ? 1 : 0;
+  const gescrold = scrollY !== vorigeScroll;
+  vorigeScroll = scrollY;
+  const bezig = snelheid > 0.0005 || gescrold || nu < tekenTot || overgangStart > 0
+    || Math.abs(kracht - doelKracht) > 0.002 || (kracht > 0.002 && muis.distanceToSquared(muisDoel) > 1e-6)
+    || Math.abs(uniforms.uWeg.value - wegDoel) > 0.001;
+  if (weg >= 1 || !bezig) return;
   // het heelal
   uniforms.uTintMix.value = gekozen ? 0.25 + 0.75 * glad(0, 0.8, c) : 0;
   uniforms.uGekozen.value = gekozen ? LABELS.findIndex((l) => l.id === gekozen) : -1;
-  uniforms.uWeg.value += ((gekozen ? 1 : 0) - uniforms.uWeg.value) * (1 - Math.exp(-dt * 5));
+  uniforms.uWeg.value += (wegDoel - uniforms.uWeg.value) * (1 - Math.exp(-dt * 5));
   if (menu > 0) {
     panelen.forEach((p, i) => {
       const b = p.getBoundingClientRect();
