@@ -84,28 +84,34 @@ function eersteKeer(id: string): boolean {
  * AIO wijst het element aan en zegt waar je moet klikken. "Doe jij het maar" = akkoord: AIO vliegt erheen en klikt.
  * Klikt de bezoeker zelf, dan is het ook goed.
  */
+let lopendVoorstel: AbortController | null = null;
+
 function stelVoor(g: AioGids, el: HTMLElement, opties: { knop: string; wat: string; klaar: string; focus?: boolean }): void {
-  let afgehandeld = false;
-  const zelf = () => {
-    if (afgehandeld) return;
-    afgehandeld = true;
-    meld('actie');
-    g.zeg({ tekst: opties.klaar, vluchtig: true });
-  };
-  el.addEventListener('click', zelf, { once: true });
+  // één voorstel tegelijk: een vorig voorstel (ook op hetzelfde element) luistert niet meer mee
+  lopendVoorstel?.abort();
+  const voorstel = new AbortController();
+  lopendVoorstel = voorstel;
+  let nr = 0;
   g.zeg({
     tekst: `Klik op «${opties.knop}». ${opties.wat}\n\nOf zal ik het voor je doen?`,
     wijs: el,
     knoppen: [
       { tekst: 'Doe jij het maar', soort: 'akkoord', doe: async () => {
-        afgehandeld = true;
-        el.removeEventListener('click', zelf);
+        voorstel.abort();
         if (await g.doe(el, `Ik klik voor je op «${opties.knop}».`)) g.zeg({ tekst: opties.klaar, vluchtig: true });
         else g.zeg({ tekst: 'Gestopt. Er is niets gebeurd.', vluchtig: true });
       } },
-      { tekst: 'Ik doe het zelf', doe: () => g.zeg({ tekst: `Prima. Klik op «${opties.knop}»: ik wijs het aan.`, wijs: el }) },
+      { tekst: 'Ik doe het zelf', doe: () => { g.zeg({ tekst: `Prima. Klik op «${opties.knop}»: ik wijs het aan.`, wijs: el }); nr = g.berichtNr; } },
     ],
   });
+  nr = g.berichtNr;
+  // klikt de bezoeker zelf, dan is het ook goed; maar alleen zolang AIO intussen niets anders zei
+  el.addEventListener('click', () => {
+    voorstel.abort();
+    if (g.berichtNr !== nr) return;
+    meld('actie');
+    g.zeg({ tekst: opties.klaar, vluchtig: true });
+  }, { signal: voorstel.signal });
   if (opties.focus) g.focusKnop();
 }
 
@@ -129,7 +135,6 @@ function naarDemo(g: AioGids, focus = false): void {
   stelVoor(g, $<HTMLElement>('header .pil')!, {
     knop: 'Plan een demo',
     wat: 'Dan opent je mailprogramma met een mail aan ons team.',
-   
     klaar: 'Je mailprogramma gaat open. Schrijf erbij wat je zaak doet, dan nemen we contact op.',
     focus,
   });
@@ -264,7 +269,9 @@ function toonAntwoord(g: AioGids, vraagTekst: string, tekst: string, over: unkno
 
 menuKnop.addEventListener('click', async () => {
   const g = await laadGids();
-  if (g.zichtbaar) { g.verberg(); return; }
+  // zichtbaar met een dichte ballon (bijvoorbeeld na Escape): eerst de ballon weer open, pas daarna wegsturen
+  if (g.zichtbaar && (g.ballonIsOpen || !g.heropen())) { g.verberg(); return; }
+  if (g.zichtbaar) return;
   g.toon({ focus: true });
   groet(g, true);
 });

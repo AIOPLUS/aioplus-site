@@ -8,7 +8,8 @@
  * Zonder WebGL of bij prefers-reduced-motion blijft de CSS-bol staan, zonder vliegen, meezweven of woord-voor-woord.
  * AIO voert nooit iets uit zonder klik op een akkoordknop (docs/agent/AIO-KARAKTER.md).
  */
-import './gids.css';
+// inline en pas bij het laden van de gids in de head: een gewone import zet Astro als blokkerende stylesheet op elke pagina
+import gidsCss from './gids.css?inline';
 import { huidigLabel, LABELKLEUR, meld, zetKijkdoel } from './brein';
 import { maakAio } from './index';
 
@@ -144,6 +145,7 @@ export class AioGids {
   private slepen: { id: number; start: Vec; vanaf: Vec; bewogen: boolean; laatst: Vec; t: number } | null = null;
   private ballonOpen = false;
   private dichtTimer = 0;
+  private wijsTimer = 0;
   private ballonMaat = { b: 320, h: 120 };
   private sterGemaakt = false;
   private bezig: { stop: boolean } | null = null;
@@ -151,6 +153,12 @@ export class AioGids {
   private versie = 0;
 
   constructor(private opties: GidsOpties) {
+    if (!document.getElementById('aio-gids-css')) {
+      const stijl = document.createElement('style');
+      stijl.id = 'aio-gids-css';
+      stijl.textContent = gidsCss;
+      document.head.append(stijl);
+    }
     this.laag.hidden = true;
     this.laag.id = 'aio-gids';
     this.laag.className = 'aio-gids';
@@ -217,9 +225,9 @@ export class AioGids {
 
   // ---------- zichtbaar of niet ----------
 
-  /** AIO komt uit de menuknop. focus: het vraagveld krijgt de focus (als de bezoeker zelf op de menuknop klikte). */
+  /** AIO komt uit de menuknop. focus: de bezoeker klikte zelf op de menuknop (zie focusStart). */
   toon({ focus = false } = {}): void {
-    if (this.zichtbaar) { if (focus) this.veld.focus({ preventScroll: true }); return; }
+    if (this.zichtbaar) { if (focus) this.focusStart(); return; }
     this.zichtbaar = true;
     this.terugNaarMenu = false;
     this.laag.hidden = false;
@@ -239,8 +247,30 @@ export class AioGids {
     meld('open');
     this.opties.opZichtbaar?.(true);
     this.start();
-    if (focus) requestAnimationFrame(() => this.veld.focus({ preventScroll: true }));
+    if (focus) requestAnimationFrame(() => this.focusStart());
   }
+
+  /**
+   * Focus na een klik op de menuknop: met een muis het vraagveld; op een telefoon de eerste knop, zodat het toetsenbord
+   * niet meteen half het scherm bedekt.
+   */
+  private focusStart(): void {
+    if (matchMedia('(pointer: fine)').matches) { this.veld.focus({ preventScroll: true }); return; }
+    (this.knoppen.querySelector('button') ?? this.ideeen.querySelector('button'))?.focus({ preventScroll: true });
+  }
+
+  get ballonIsOpen(): boolean { return this.ballonOpen; }
+
+  /** Ballon weer open (menuknop of toetsenbord na Escape). false als AIO nog niets zei. */
+  heropen(): boolean {
+    if (!this.tekst.childNodes.length) return false;
+    this.openBallon();
+    requestAnimationFrame(() => this.focusStart());
+    return true;
+  }
+
+  /** Telt de berichten: een voorstel weet zo of het nog het laatste woord van AIO is. */
+  get berichtNr(): number { return this.versie; }
 
   /** AIO vliegt terug in de menuknop. */
   verberg(): void {
@@ -337,6 +367,9 @@ export class AioGids {
   wijs(el: Element | null): void {
     this.wijsEl = el;
     zetKijkdoel(el);
+    // aanwijzen houdt de lus en de grote ster op volle snelheid: na 30 s zonder vervolg stopt het (batterij)
+    clearTimeout(this.wijsTimer);
+    if (el) this.wijsTimer = window.setTimeout(() => { if (!this.bezig && this.wijsEl === el) this.wijs(null); }, 30_000);
     this.gloed.classList.toggle('aan', Boolean(el));
     this.pijl.classList.toggle('aan', Boolean(el));
     if (el) this.gloed.style.setProperty('--gk', this.labelKleur());
