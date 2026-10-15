@@ -4,14 +4,14 @@ De website van AIO Plus: één platform, één AI-laag (AIO, powered by Claude) 
 
 ## Het verhaal
 
-1. **Opening**: losse sterren trekken samen tot een wolk en draaien uit tot een spiraalstelsel met vier armen in de labelkleuren, met AIO als fel centrum. "AIO" links, "Plus" rechts.
+1. **Opening**: losse sterren trekken samen tot een wolk en draaien uit tot een spiraalstelsel met vier armen in de labelkleuren, met AIO als fel centrum. "AIO" links, "Plus" rechts. Na de intro komt het stelsel tot stilstand; daarna beweegt het alleen als de bezoeker scrolt of de muis beweegt (en wordt er alleen dan getekend).
 2. **Scrollen**: je vliegt het stelsel in; het valt uiteen in een sterrenhemel en de zin "Eén AI-motor. Vier gespecialiseerde labels." verschijnt.
-3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Stijl: nevels in de labelkleur. Drie andere stijlen (stelsels, planeten, horizon) staan klaar voor later (`AUTOMATISCH_WISSELEN` in `src/scripts/heelal.ts`). Het kwart onder de muis wordt groter.
-4. **Inzoomen**: "Ontdek" (of een label in het hoofdmenu) laat het label het scherm vullen; daarna volgt een presentatie per label met kerncijfers en onderdelen.
+3. **Labelmenu**: de sterren vliegen naar vier kwarten (de volgorde van het beeldmerk) en elk kwart kleurt vanuit het midden. Stijl: nevels in de labelkleur. Drie andere stijlen (stelsels, planeten, horizon) staan klaar voor later (`AUTOMATISCH_WISSELEN` in `src/scripts/heelal.ts`). Onder de muis licht de nevel van dat kwart op.
+4. **Inzoomen**: "Ontdek" (of een label in het hoofdmenu) laat het label het scherm vullen; daarna volgt een presentatie per label met kerncijfers en onderdelen. Daar vervaagt het heelal, zodat de tekst op een effen achtergrond staat.
 
 **AIO als gids**: de ronde AIO-knop midden in het hoofdmenu stuurt AIO (de ster) op pad of haalt hem terug. AIO reist mee tijdens het scrollen, vertelt per onderdeel kort wat je ziet, wijst aan waar je moet klikken en kan het na akkoord zelf doen. Vragen typ je in zijn ballon (Claude Sonnet 5.5). Wat AIO zegt en doet staat in `src/scripts/aio-gids.ts`; de gids zelf (ster, ballon, aanwijzen) in `src/scripts/aio-wezen/gids.ts`. View Plus en Tab Plus staan rechts uitgelijnd. De vragen gaan naar een eigen Worker bij Cloudflare (`workers/aio-chat`, uitleg in de README daar); het adres staat in `src/scripts/aio-gids.ts` (of GitHub-variabele `PUBLIC_AIO_CHAT_URL`). Ontwerp: hub `docs/agent/AIO-GIDS.md`.
 
-Langs de rand stroomt een regenboog van de vier labelkleuren; met de muis op een label wordt die gloed (en het tabje rechts) de kleur van dat label.
+Met de muis op een label (of na het kiezen van een label) krijgt de rand een zachte gloed in de kleur van dat label. Er beweegt niets uit zichzelf: geen herhalende animaties (verbeterplan "rust", hub `docs/website/VERBETERPLAN.md`).
 
 ## Werken
 
