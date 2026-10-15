@@ -1,6 +1,6 @@
 # AIO-chat (Cloudflare Worker)
 
-De chat met AIO op aioplus.ai. De ronde AIO-knop midden in het menu opent een chatvenster (`src/scripts/aio-chat.ts` in de site); de vragen komen hier binnen en deze Worker vraagt Claude om een antwoord, dat hij terugstreamt naar de browser.
+De vragen aan AIO op aioplus.ai. AIO is daar een gids die meereist over de pagina (`src/scripts/aio-gids.ts` in de site); vragen typ je in zijn ballon. Ze komen hier binnen en deze Worker vraagt Claude om een antwoord, dat hij terugstreamt naar de browser. Claude mag aan het eind één vervolgstap voorstellen met een label (`[[label:reviewplus]]`, `[[demo]]`, `[[labels]]`, zie `src/systeem.ts`); de site haalt dat label weg en maakt er een knop van.
 
 - **Adres**: https://aio-chat.cool-shape-7891.workers.dev/chat (alleen `POST`, alleen vanaf de websites in `HERKOMST` in `wrangler.jsonc`).
 - **Model**: Claude Sonnet 5.5 (`claude-sonnet-5-5`) met korte denkstappen (effort `low`); besluit Jordan 02-10-2026.

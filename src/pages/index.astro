@@ -28,7 +28,7 @@ import { url } from '@/lib/url';
       {LABELS.map((l, i) => (
         <Fragment>
           {i === 2 && (
-            <button type="button" class="aio-knop" aria-controls="aio-chat" aria-expanded="false" aria-label="Vraag het AIO"><span>AIO</span></button>
+            <button type="button" class="aio-knop" aria-controls="aio-gids" aria-expanded="false" aria-label="AIO, je gids"><span>AIO</span></button>
           )}
           <button type="button" data-ga={l.id} style={`--k:${l.kleur}`}><i></i><span>{l.kort}<span class="plus"> Plus</span></span></button>
         </Fragment>
@@ -109,38 +109,12 @@ import { url } from '@/lib/url';
     ))}
   </main>
 
-  <section class="chat" id="aio-chat" role="dialog" aria-labelledby="chat-titel" hidden>
-    <div class="chat-kop">
-      <span class="chat-bol" aria-hidden="true">AIO</span>
-      <div class="chat-titel">
-        <h2 id="chat-titel">Vraag het AIO</h2>
-        <p>De AI van AIO Plus, powered by Claude</p>
-      </div>
-      <button type="button" class="chat-nieuw" aria-label="Nieuw gesprek" hidden>Nieuw<span class="lang"> gesprek</span></button>
-      <button type="button" class="chat-sluit" aria-label="Chat sluiten">✕</button>
-    </div>
-    <div class="chat-log" role="log" aria-live="polite" tabindex="-1">
-      <div class="chat-welkom">
-        <div class="chat-ster" aria-hidden="true"></div>
-        <p>Hoi, ik ben AIO. Vraag me alles over AIO Plus en de vier labels: reviews, social media, websites en kassa.</p>
-        <div class="chat-ideeen">
-          <button type="button">Wat doet AIO Plus?</button>
-          <button type="button">Hoe krijg ik meer reviews?</button>
-          <button type="button">Welk label past bij mijn zaak?</button>
-        </div>
-      </div>
-    </div>
-    <form class="chat-vorm">
-      <label class="sr-only" for="chat-vraag">Je vraag aan AIO</label>
-      <textarea id="chat-vraag" rows="1" maxlength="1000" placeholder="Stel je vraag aan AIO" autocomplete="off"></textarea>
-      <button type="submit" class="chat-stuur" aria-label="Versturen">↑</button>
-    </form>
-    <p class="chat-noot">AIO kan fouten maken. Vul geen persoonlijke gegevens in.</p>
-  </section>
+  <!-- AIO als gids: src/scripts/aio-gids.ts vult deze laag pas als hij nodig is -->
+  <div id="aio-gids" class="aio-gids" hidden></div>
 
 
   <script>
     import '@/scripts/heelal';
-    import '@/scripts/aio-chat';
+    import '@/scripts/aio-gids';
   </script>
 </BaseLayout>
