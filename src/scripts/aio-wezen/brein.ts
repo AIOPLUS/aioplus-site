@@ -50,10 +50,22 @@ export const stemming: Stemming = {
 };
 let knipper = 1, volgendeKnipper = 2.5;
 
+/**
+ * Stil in rust: ster.ts stopt de lus als AIO in rust is (geen oneindige animaties, besluit Jordan 15-10-2026). Dan leek
+ * hij wakker, dus schrikt hij bij de volgende activiteit niet wakker; die activiteit start de lus weer (wekker).
+ */
+let gepauzeerd = false;
+let wekker: (() => void) | null = null;
+export function zetStil(stil: boolean, wek: () => void): void {
+  gepauzeerd = stil;
+  wekker = wek;
+}
+
 function activiteit(): void {
   const t = nu();
-  if (t - laatsteActiviteit > SLAAP_NA) tijdelijk = { staat: 'oeps', tot: t + .5, daarna: 'blij' };
+  if (!gepauzeerd && t - laatsteActiviteit > SLAAP_NA) tijdelijk = { staat: 'oeps', tot: t + .5, daarna: 'blij' };
   laatsteActiviteit = t;
+  if (gepauzeerd) { gepauzeerd = false; wekker?.(); }
 }
 
 /**
@@ -99,12 +111,12 @@ export function zetLabel(l: AioLabel, stil = false): void {
   tijdelijk = { staat: 'blij', tot: nu() + 1 };
 }
 
-/** Elke beweging, toets of scroll houdt AIO wakker. */
+/** Elke beweging, klik, toets of scroll houdt AIO wakker. */
 let luistertNaarActiviteit = false;
 export function volgActiviteit(): void {
   if (luistertNaarActiviteit) return;
   luistertNaarActiviteit = true;
-  for (const e of ['pointermove', 'keydown', 'scroll', 'touchstart'] as const) addEventListener(e, activiteit, { passive: true });
+  for (const e of ['pointermove', 'pointerdown', 'keydown', 'scroll', 'touchstart'] as const) addEventListener(e, activiteit, { passive: true });
 }
 
 function kiesStaat(t: number): AioStaat {

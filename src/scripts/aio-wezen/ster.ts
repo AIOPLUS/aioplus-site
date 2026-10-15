@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import { coronaFragment, lijfFragment, lijfVertex, vlakVertex, vonkFragment, vonkVertex } from './shaders';
-import { huidigKijkdoel, huidigLabel, LABELKLEUR, meld, stap, stemming, volgActiviteit, type AioLabel } from './brein';
+import { huidigKijkdoel, huidigLabel, LABELKLEUR, meld, stap, stemming, volgActiviteit, zetStil, type AioLabel } from './brein';
 
 export type AioOpties = {
   grootte: 'klein' | 'groot';
@@ -51,11 +51,24 @@ const sterren = new Set<AioSter>();
 const muis = { x: 0, y: 0, actief: false, laatst: 0 };
 let lusId = 0, vorige = 0, tijd = 0;
 
+/**
+ * Stil tot je reageert (besluit Jordan 15-10-2026: geen oneindige animaties). Is AIO in rust met open ogen, beweegt de
+ * muis al even niet en wijst hij niets aan, dan tekent elke ster nog één beeld en stopt de lus. Een beweging, klik,
+ * toets, scroll of gebeurtenis (meld) maakt hem weer levend (brein.ts, zetStil).
+ */
+const STIL_NA = 2.5;
+function magStil(): boolean {
+  const s = stemming;
+  return s.staat === 'rust' && s.ogenNu > .98 && performance.now() / 1000 - muis.laatst > STIL_NA && !huidigKijkdoel();
+}
+
 function lus(ms: number): void {
   const dt = Math.min(.05, (ms - vorige) / 1000 || .016);
   vorige = ms; tijd += dt;
   stap(tijd, dt);
-  for (const s of sterren) s.teken(tijd, dt);
+  const stil = magStil();
+  for (const s of sterren) s.teken(tijd, dt, stil);
+  if (stil) { lusId = 0; zetStil(true, start); return; }
   lusId = sterren.size && !document.hidden ? requestAnimationFrame(lus) : 0;
 }
 function start(): void { if (!lusId && sterren.size && !document.hidden) { vorige = performance.now(); lusId = requestAnimationFrame(lus); } }
@@ -168,6 +181,8 @@ export class AioSter {
     const breed = this.canvas.clientWidth, hoog = this.canvas.clientHeight;
     if (!breed || !hoog) return;
     this.renderer.setSize(breed, hoog, false);
+    // een nieuwe maat wist het canvas: opnieuw tekenen, ook als de lus stil lag
+    start();
     this.camera.aspect = breed / hoog;
     this.camera.updateProjectionMatrix();
     if (this.vonken) {
@@ -194,10 +209,11 @@ export class AioSter {
     return new THREE.Vector3(Math.sin(tijd * .35) * .18, Math.sin(tijd * .23) * .08, 1);
   }
 
-  teken(tijd: number, dt: number): void {
+  /** Eén beeld; laatste: het laatste beeld voordat de lus stilvalt, altijd tekenen. */
+  teken(tijd: number, dt: number, laatste = false): void {
     if (!this.inBeeld || !this.canvas.getClientRects().length) return;
     this.opgespaard += dt;
-    if (this.opgespaard < (this.groot ? grootInterval() : kleinInterval())) return;
+    if (!laatste && this.opgespaard < (this.groot ? grootInterval() : kleinInterval())) return;
     dt = this.opgespaard;
     this.opgespaard = 0;
     const s = stemming;
@@ -239,6 +255,7 @@ export class AioSter {
   /** Wissel tussen de lichte en de donkere uitvoering (bijvoorbeeld als de gebruiker de weergave wisselt). */
   zetAchtergrond(achtergrond: 'donker' | 'licht'): void {
     this.u.uLicht.value = achtergrond === 'licht' ? 1 : 0;
+    start();
   }
 
   stop(): void {
