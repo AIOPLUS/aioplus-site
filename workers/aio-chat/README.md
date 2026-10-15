@@ -4,7 +4,8 @@ De vragen aan AIO op aioplus.ai. AIO is daar een gids die meereist over de pagin
 
 - **Adres**: https://aio-chat.cool-shape-7891.workers.dev/chat (alleen `POST`, alleen vanaf de websites in `HERKOMST` in `wrangler.jsonc`).
 - **Model**: Claude Sonnet 5.5 (`claude-sonnet-5-5`) met korte denkstappen (effort `low`); besluit Jordan 02-10-2026.
-- **Wat AIO weet**: de systeemprompt in `src/systeem.ts`, met de labelteksten uit de site (`src/data/labels.ts`). Wijzig je die teksten, dan rolt de chat na de merge vanzelf opnieuw uit. AIO verzint geen prijzen, klanten of cijfers en verwijst daarvoor naar een demo of support@reviewplus.io.
+- **Wie AIO is**: de gedeelde kern in `src/aio-kern.ts` (toon, feiten, nooit zelf handelen, veiligheid), letterlijk gelijk aan de app en aan hub `docs/agent/AIO-PROMPT.md`. Niet hier wijzigen maar via de chat "AIO Plus - Agent".
+- **Wat AIO weet**: de aanvulling voor de website in `src/systeem.ts`, met de labelteksten uit de site (`src/data/labels.ts`). Wijzig je die teksten, dan rolt de chat na de merge vanzelf opnieuw uit. AIO verzint geen prijzen, klanten of cijfers en verwijst daarvoor naar een demo of support@reviewplus.io.
 - **Plafonds** (`wrangler.jsonc`, besluit Jordan 02-10-2026): `DAGBUDGET_USD` = $5 per dag voor alle bezoekers samen, `VRAGEN_PER_DAG` = 20 vragen per bezoeker per dag. Daarboven krijgt de bezoeker een nette melding. De teller (`src/teller.ts`, een Durable Object) bewaart alleen de stand van vandaag; een bezoeker is een hash van het IP-adres met een dagelijks nieuw zout, niet het IP-adres zelf.
 - **Gesprek**: staat alleen in de browser van de bezoeker (sessionStorage) en gaat bij elke vraag mee. Antwoorden komen ongewijzigd terug, ook de onzichtbare denkblokken, zodat Claude het gesprek kan vervolgen. Maximaal 11 vragen per gesprek; daarna "Nieuw gesprek".
 
