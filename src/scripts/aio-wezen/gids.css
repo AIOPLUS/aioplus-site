@@ -67,24 +67,22 @@
 .aio-gids-ballon[data-kant='boven']::after { top: -7px; left: calc(var(--staart, 60px) - 6px); rotate: 135deg; }
 
 /* ---------- aanwijzen: gloed om het element en een getekende pijl ---------- */
-.aio-gids-gloed { --gk: #ffd9ae; position: fixed; left: 0; top: 0; z-index: 35; pointer-events: none; opacity: 0; transition: opacity .3s var(--aio-ease), scale .25s var(--aio-ease);
+.aio-gids-gloed { --gk: #ffd9ae; position: fixed; left: 0; top: 0; z-index: 35; pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease), scale .25s var(--aio-ease);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--gk) 55%, #fff), 0 0 26px 4px color-mix(in srgb, var(--gk) 65%, transparent), inset 0 0 18px color-mix(in srgb, var(--gk) 30%, transparent); }
-.aio-gids-gloed.aan { opacity: 1; animation: aio-gids-gloed 1.8s var(--aio-ease) infinite; }
+.aio-gids-gloed.aan { opacity: 1; }
 .aio-gids-gloed.klik { scale: .94; }
-.aio-gids-pijl { position: fixed; inset: 0; z-index: 35; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .3s var(--aio-ease); }
+.aio-gids-pijl { position: fixed; inset: 0; z-index: 35; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease); }
 .aio-gids-pijl.aan { opacity: 1; }
 .aio-gids-pijl path { fill: none; stroke: rgb(255 228 196 / .9); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgb(255 200 150 / .6)); }
-.aio-gids-pijl .lijn { stroke-dasharray: 2 8; animation: aio-gids-pijl .9s linear infinite; }
+.aio-gids-pijl .lijn { stroke-dasharray: 2 8; }
 
 @media (max-width: 639px) { .aio-gids-ster { width: 150px; height: 150px; } .aio-gids-weg { left: calc(50% + 18px); top: calc(50% - 40px); } .aio-gids-ballon { font-size: 14px; } .aio-gids-inhoud { max-height: 38vh; } .aio-gids-veld { font-size: 16px; } }
 
 @keyframes aio-woord { from { opacity: 0; translate: 0 3px; filter: blur(3px); } }
 @keyframes aio-gids-laadt { from { width: 12px; } to { width: 36px; } }
 @keyframes aio-gids-werkt { from { background-position: -40% 0; } to { background-position: 140% 0; } }
-@keyframes aio-gids-gloed { 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--gk) 55%, #fff), 0 0 40px 10px color-mix(in srgb, var(--gk) 55%, transparent), inset 0 0 18px color-mix(in srgb, var(--gk) 30%, transparent); } }
-@keyframes aio-gids-pijl { to { stroke-dashoffset: -10; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .aio-woord, .aio-gids-gloed.aan, .aio-gids-pijl .lijn, .aio-gids-ballon.werkt::before, .aio-gids-tekst.laadt::after { animation: none; }
+  .aio-woord, .aio-gids-ballon.werkt::before, .aio-gids-tekst.laadt::after { animation: none; }
   .aio-gids-ballon, .aio-gids-ballon.open { scale: 1; transition: opacity .15s; }
 }

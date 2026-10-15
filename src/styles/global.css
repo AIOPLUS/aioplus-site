@@ -240,8 +240,6 @@ nav.labels.labels[data-gekozen='tabplus'] { grid-template-columns: 0fr 1fr; grid
   background: radial-gradient(circle at 50% 42%, #fffbf4 0%, #ffe6c8 52%, #f0c493 100%); box-shadow: 0 0 22px 3px color-mix(in srgb, var(--aio-k) 45%, transparent); transition: box-shadow .6s var(--ease), scale .3s var(--ease); }
 .hoofdmenu .aio-knop:hover { background: radial-gradient(circle at 50% 42%, #fffbf4 0%, #ffe6c8 52%, #f0c493 100%); box-shadow: 0 0 30px 6px color-mix(in srgb, var(--aio-k) 60%, transparent); scale: 1.06; }
 .hoofdmenu .aio-knop:focus-visible { outline: 2px solid var(--tekst); outline-offset: 3px; }
-.aio-knop::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--aio-k) 70%, transparent); animation: aio-adem 3.2s var(--ease) infinite; pointer-events: none; }
-.aio-knop[aria-expanded='true']::after { animation: none; opacity: 0; }
 .aio-knop span { position: relative; }
 /* AIO als ster (src/scripts/aio-wezen): het canvas ligt over de CSS-bol; die blijft als terugval zonder WebGL of bij prefers-reduced-motion. */
 .aio-ster { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -250,11 +248,7 @@ nav.labels.labels[data-gekozen='tabplus'] { grid-template-columns: 0fr 1fr; grid
 /* is de gids open, dan is AIO "uit" het menu: de knopster wordt een zwakke afdruk */
 .aio-knop .aio-ster { transition: opacity .5s var(--ease); }
 .aio-knop[aria-expanded='true'] .aio-ster { opacity: .35; }
-@keyframes aio-adem { 0% { scale: 1; opacity: .7; } 70%, 100% { scale: 1.5; opacity: 0; } }
 
 @media (max-width: 640px) {
   .hoofdmenu .aio-knop { width: 36px; height: 36px; margin: -2px 1px; font-size: 10px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .aio-knop::after { animation: none; }
 }
