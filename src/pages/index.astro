@@ -1,9 +1,12 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import LabelVoorbeeld from '@/components/LabelVoorbeeld.astro';
 import { LABELS } from '@/data/labels';
 import { mailto } from '@/config/site';
 import { url } from '@/lib/url';
 
+// Voorbeeldvragen onder het AIO-vraagveld in de opening; ze gaan naar AIO (de gids, src/scripts/aio-gids.ts).
+const VOORBEELDEN = ['Wat doet AIO Plus?', 'Hoe krijg ik meer reviews?', 'Welk label past bij mijn zaak?'];
 ---
 <BaseLayout
   title="AIO Plus: één AI-motor, vier labels"
@@ -11,8 +14,6 @@ import { url } from '@/lib/url';
 >
   <a class="naar-inhoud" href="#labels">Naar de labels</a>
   <canvas id="heelal" aria-hidden="true"></canvas>
-  <div class="label-gloed" aria-hidden="true"></div>
-  <div class="rand" aria-hidden="true"></div>
 
   <header>
     <a class="merk" href={url('/')} aria-label="AIO Plus, naar het begin">
@@ -28,7 +29,7 @@ import { url } from '@/lib/url';
           {i === 2 && (
             <button type="button" class="aio-knop" aria-controls="aio-gids" aria-expanded="false" aria-label="AIO, je gids"><span>AIO</span></button>
           )}
-          <button type="button" data-ga={l.id} style={`--k:${l.kleur}`}><i></i><span>{l.kort}<span class="plus"> Plus</span></span></button>
+          <button type="button" data-ga={l.id} aria-controls={`paneel-${l.id}`} style={`--k:${l.kleur}`}><i></i><span>{l.kort}<span class="plus"> Plus</span></span></button>
         </Fragment>
       ))}
     </nav>
@@ -36,83 +37,88 @@ import { url } from '@/lib/url';
   </header>
 
   <main>
-    <section class="hero">
-      <h1 aria-label="AIO Plus"><span aria-hidden="true">AIO</span><span aria-hidden="true">Plus</span></h1>
-      <div class="hint" aria-hidden="true">Scroll<i></i></div>
-    </section>
+    <!-- Opening: de boodschap, AIO en een demo in het eerste scherm (verbeterplan fase 2) -->
+    <section class="opening" aria-labelledby="kop-opening">
+      <div class="opening-inhoud">
+        <p class="kicker"><span class="kicker-bol" aria-hidden="true"></span>Eén platform, één AI-laag, powered by Claude</p>
+        <h1 id="kop-opening">Eén <span class="heel">AI-motor.</span> Vier gespecialiseerde labels.</h1>
+        <p class="lead">Reviews, social media, je website en je kassa. Samen in één platform, met AIO die overal meedenkt.</p>
 
-    <section class="reis" aria-label="De labels van AIO Plus">
-      <div class="podium">
-        <div class="zin">
-          <div>
-            <h2>Eén AI-motor. Vier gespecialiseerde labels.</h2>
-            <p>Reviews, social media, je website en je kassa. Samen in één platform, met AIO die overal meedenkt.</p>
-          </div>
+        <form class="vraag-aio" aria-label="Vraag het AIO">
+          <span class="vraag-bol" aria-hidden="true">AIO</span>
+          <label class="sr-only" for="vraag-aio-veld">Je vraag aan AIO</label>
+          <input id="vraag-aio-veld" type="text" maxlength="1000" autocomplete="off" enterkeyhint="send" placeholder="Vraag AIO iets over AIO Plus" />
+          <button type="submit" class="vraag-stuur" aria-label="Versturen">↑</button>
+        </form>
+        <div class="voorbeelden" aria-label="Voorbeeldvragen">
+          {VOORBEELDEN.map((v) => <button type="button" class="voorbeeld">{v}</button>)}
         </div>
-        <nav class="labels" id="labels" aria-label="Labels van AIO Plus" tabindex="-1">
-          {LABELS.map((l, i) => (
-            <div
-              class={`label l${i + 1}`}
-              data-label={l.id}
-              style={`--k:${l.kleur}; --k2:${l.kleur2}; --nx:${l.nevel.nx}; --ny:${l.nevel.ny}; --mx:${l.nevel.mx}; --my:${l.nevel.my}`}
-            >
-              <span class="laag laag-nevel" aria-hidden="true"></span><span class="laag laag-stelsel" aria-hidden="true"></span><span class="laag laag-planeet" aria-hidden="true"></span><span class="laag laag-horizon" aria-hidden="true"></span>
-              <span class="inhoud">
-                <span class="nr" aria-hidden="true">{l.nr}</span>
-                <span class="naam">{l.naam}</span>
-                <span class="oms">{l.oms}</span>
-                <span class="voet"><span class="status">{l.status}</span></span>
-                <span class="acties">
-                  <button type="button" class="knop" data-zoom={l.id} aria-label={`Ontdek ${l.naam}`}><span>Ontdek<span class="lang"> {l.naam}</span></span> →</button>
-                  {l.site && <a class="site" href={l.site.href}>{l.site.label} ↗</a>}
-                </span>
-              </span>
-            </div>
-          ))}
-          <span class="lijn lijn-v" aria-hidden="true"></span><span class="lijn lijn-h" aria-hidden="true"></span>
-          <span class="aio" aria-hidden="true">AIO</span>
-          <button type="button" class="terug">← Alle labels</button>
-        </nav>
+
+        <div class="opening-acties">
+          <a class="knop-licht" href={mailto('Demo AIO Plus')}>Plan een demo</a>
+          <a class="link-pijl" href="#labels">Bekijk de vier labels <span aria-hidden="true">↓</span></a>
+        </div>
       </div>
     </section>
 
-    {LABELS.map((l) => (
-      <section class="hoofdstuk" id={`label-${l.id}`} data-hoofdstuk={l.id} style={`--k:${l.kleur}`} aria-labelledby={`kop-${l.id}`} hidden>
-        <div class="scene">
-          <p class="h-kicker">{l.nr} · {l.naam} · {l.status}</p>
-          <h2 class="h-kop" id={`kop-${l.id}`}>{l.kop}</h2>
-          <p class="h-tekst">{l.tekst}</p>
-          <div class="h-cijfers">
-            {l.cijfers.map(([getal, tekst]) => <div><b>{getal}</b><span>{tekst}</span></div>)}
-          </div>
-        </div>
-        {l.pijlers.map(([titel, intro, punten], i) => (
-          <article class="scene pijler">
-            <span class="p-nr" aria-hidden="true">0{i + 1}</span>
-            <div>
-              <h3>{titel}</h3>
-              <p>{intro}</p>
-              <ul>{punten.map((p) => <li>{p}</li>)}</ul>
-            </div>
-          </article>
+    <!-- De vier labels als tabbladen met één kaart (verbeterplan fase 3) -->
+    <section class="labels-sectie" id="labels" aria-labelledby="kop-labels" tabindex="-1">
+      <div class="sectie-kop">
+        <p class="kicker">De labels</p>
+        <h2 id="kop-labels">Begin met één label, voeg er later een toe.</h2>
+        <p class="lead">Elk label doet één ding goed. AIO werkt in alle vier mee.</p>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Labels van AIO Plus">
+        {LABELS.map((l, i) => (
+          <button type="button" role="tab" class="tab" id={`tab-${l.id}`} aria-controls={`paneel-${l.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-tab={l.id} style={`--k:${l.kleur}`}>
+            <i aria-hidden="true"></i>{l.naam}<span class="tab-status">{l.status}</span>
+          </button>
         ))}
-        <div class="scene h-slot">
-          <h3>{l.slot}</h3>
-          <div class="acties">
-            <a class="knop" style={`--k:${l.kleur}`} href={l.actie.href}>{l.actie.label} →</a>
-            <button type="button" class="knop-ghost" data-terug>← Terug naar alle labels</button>
+      </div>
+
+      {LABELS.map((l, i) => (
+        <div class="label paneel" id={`paneel-${l.id}`} role="tabpanel" aria-labelledby={`tab-${l.id}`} data-label={l.id} style={`--k:${l.kleur}`} hidden={i !== 0} tabindex="0">
+          <div class="paneel-intro">
+            <p class="paneel-kicker">{l.nr} · <span class="naam">{l.naam}</span> · {l.status}</p>
+            <h3>{l.kop}</h3>
+            <p class="paneel-tekst">{l.tekst}</p>
+            <dl class="cijfers">
+              {l.cijfers.map(([getal, tekst]) => <div><dt>{getal}</dt><dd>{tekst}</dd></div>)}
+            </dl>
+            <div class="paneel-acties">
+              <a class="knop" href={l.actie.href}>{l.actie.label} →</a>
+            </div>
           </div>
+          <LabelVoorbeeld id={l.id} />
+          <ol class="pijlers" aria-label={`Wat ${l.naam} doet`} style={`--n:${l.pijlers.length}`}>
+            {l.pijlers.map(([titel, intro, punten], j) => (
+              <li>
+                <span class="pj-nr" aria-hidden="true">0{j + 1}</span>
+                <h4>{titel}</h4>
+                <p>{intro}</p>
+                <ul>{punten.map((p) => <li>{p}</li>)}</ul>
+              </li>
+            ))}
+          </ol>
         </div>
-      </section>
-    ))}
+      ))}
+    </section>
+
+    <section class="afsluiting" aria-labelledby="kop-afsluiting">
+      <h2 id="kop-afsluiting">Benieuwd wat AIO Plus voor jouw zaak kan doen?</h2>
+      <div class="opening-acties">
+        <a class="knop-licht" href={mailto('Demo AIO Plus')}>Plan een demo</a>
+      </div>
+    </section>
   </main>
 
   <!-- AIO als gids: src/scripts/aio-gids.ts vult deze laag pas als hij nodig is -->
   <div id="aio-gids" class="aio-gids" hidden></div>
 
-
   <script>
     import '@/scripts/heelal';
+    import '@/scripts/labels';
     import '@/scripts/aio-gids';
   </script>
 </BaseLayout>

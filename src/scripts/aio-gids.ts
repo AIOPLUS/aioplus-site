@@ -29,7 +29,6 @@ const MELDINGEN: Record<string, string> = {
 const $ = <T extends Element>(s: string) => document.querySelector<T>(s);
 const menuKnop = $<HTMLButtonElement>('.aio-knop')!;
 const labelMenu = $<HTMLElement>('#labels');
-const reis = $<HTMLElement>('.reis');
 const beweging = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** De labels zoals de pagina ze toont (naam, kleur, knoppen), uit de DOM: zo zegt AIO nooit iets anders dan de pagina. */
@@ -104,15 +103,12 @@ function stelVoor(g: AioGids, el: HTMLElement, opties: { knop: string; wat: stri
   if (opties.focus) g.focusKnop();
 }
 
-/** Naar een label: in het labelmenu de knop "Ontdek", anders het label in het menu bovenaan. */
+/** Naar een label: het label in het menu bovenaan (dat kiest het tabblad en scrolt erheen, src/scripts/labels.ts). */
 function naarLabel(g: AioGids, id: LabelId, focus = false): void {
   const l = label(id);
-  const ontdek = $<HTMLElement>(`[data-zoom="${id}"]`);
-  const opKaart = ontdek && ontdek.getBoundingClientRect().height > 0 && getComputedStyle(ontdek.closest('.inhoud') ?? ontdek).opacity !== '0' && !labelMenu?.dataset.gekozen;
-  const el = opKaart ? ontdek : $<HTMLElement>(`.hoofdmenu [data-ga="${id}"]`)!;
-  stelVoor(g, el, {
-    knop: opKaart ? `Ontdek ${l.naam}` : `${l.naam}`,
-    wat: opKaart ? `Dan zoom je in op ${l.naam}.` : `Dat staat bovenaan in het menu; dan ga je naar ${l.naam}.`,
+  stelVoor(g, $<HTMLElement>(`.hoofdmenu [data-ga="${id}"]`)!, {
+    knop: l.naam,
+    wat: `Dat staat bovenaan in het menu; dan ga je naar ${l.naam}.`,
     klaar: `Dit is ${l.naam}. Vraag gerust iets als je meer wilt weten.`,
     focus,
   });
@@ -127,13 +123,8 @@ function naarDemo(g: AioGids, focus = false): void {
   });
 }
 
-function naarLabels(g: AioGids, focus = false): void {
-  const terug = labelMenu?.dataset.gekozen ? $<HTMLElement>('.terug') : null;
-  if (terug) {
-    stelVoor(g, terug, { knop: '← Alle labels', wat: 'Dan zie je de vier labels weer.', klaar: 'Hier zijn ze weer, alle vier.', focus });
-    return;
-  }
-  (labelMenu ?? reis)?.scrollIntoView({ block: 'end', behavior: beweging() ? 'smooth' : 'auto' });
+function naarLabels(g: AioGids): void {
+  labelMenu?.scrollIntoView({ block: 'start', behavior: beweging() ? 'smooth' : 'auto' });
   g.zeg({ tekst: 'Ik scroll je naar de vier labels.', vluchtig: true });
 }
 
@@ -248,7 +239,7 @@ function toonAntwoord(g: AioGids, vraagTekst: string, tekst: string, over: unkno
   const knoppen: GidsKnop[] = [];
   if (actie?.[2]) { const id = actie[2] as LabelId; knoppen.push({ tekst: `Laat ${label(id).naam} zien`, soort: 'akkoord', doe: () => naarLabel(g, id, true) }); }
   else if (actie?.[1] === 'demo') knoppen.push({ tekst: 'Plan een demo', soort: 'akkoord', doe: () => naarDemo(g, true) });
-  else if (actie?.[1] === 'labels') knoppen.push({ tekst: 'Laat de labels zien', soort: 'akkoord', doe: () => naarLabels(g, true) });
+  else if (actie?.[1] === 'labels') knoppen.push({ tekst: 'Laat de labels zien', soort: 'akkoord', doe: () => naarLabels(g) });
   g.zeg({ kop: vraagTekst, tekst: schoon, knoppen });
 }
 
@@ -261,6 +252,13 @@ menuKnop.addEventListener('click', async () => {
   if (g.zichtbaar) return;
   g.toon({ focus: true });
   groet(g);
+});
+
+// het vraagveld en de voorbeeldvragen in de opening (src/scripts/labels.ts): de vraag gaat naar AIO. Loopt er al een
+// vraag, dan annuleert AIO het event en blijft de tekst in het veld staan.
+addEventListener('aio:vraag', (e) => {
+  if (bezig) { e.preventDefault(); return; }
+  void vraag((e as CustomEvent<string>).detail);
 });
 
 /** De menuster (klein) laadt na de eerste interactie of na 5 s, zodat hij de laadfase van de pagina niet verzwaart. */
@@ -280,7 +278,7 @@ const startMenuster = () => {
 EERSTE_INTERACTIE.forEach((e) => addEventListener(e, startMenuster, { once: true, passive: true }));
 setTimeout(startMenuster, 5000);
 
-// AIO kleurt mee met het gekozen label (heelal.ts zet data-gekozen op het labelmenu); de menuknop gloeit in die kleur.
+// AIO kleurt mee met het gekozen label (labels.ts zet data-gekozen op #labels als de bezoeker een label kiest); de menuknop gloeit in die kleur.
 function volgLabel(): void {
   const id = labelMenu?.dataset.gekozen as LabelId | undefined;
   zetLabel(id ?? 'aio');

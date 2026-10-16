@@ -1,17 +1,18 @@
 /**
- * Het heelal van aioplus.ai: een sterrenstelsel met vier armen in de labelkleuren (AIO in het midden),
- * dat bij het scrollen uiteenvalt en zich opnieuw ordent in het labelmenu (vier kwarten).
+ * Het heelal van aioplus.ai: een sterrenstelsel met vier armen in de labelkleuren (AIO in het midden), alleen in de opening
+ * (besluit Jordan 15-10-2026, verbeterplan in de hub: docs/website/VERBETERPLAN.md).
+ * Na een korte intro staat het stelsel stil; het beweegt alleen als de bezoeker scrolt of de muis beweegt, en alleen dan
+ * wordt er getekend. Bij het scrollen valt het uiteen en vervaagt het; daaronder staat de pagina op een effen achtergrond.
  * Eén WebGL-doek met Three.js; alle beweging gebeurt in de shader. Werkt ook zonder WebGL en met minder beweging.
  */
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, Euler, MathUtils, Matrix3, Matrix4, PerspectiveCamera, Points, SRGBColorSpace, Scene, ShaderMaterial, Sprite, SpriteMaterial, Vector2, Vector4, WebGLRenderer, type Texture } from 'three';
-import { LABELS, type LabelId } from '@/data/labels';
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, Euler, Matrix3, Matrix4, PerspectiveCamera, Points, SRGBColorSpace, Scene, ShaderMaterial, Sprite, SpriteMaterial, Vector2, WebGLRenderer, type Texture } from 'three';
+import { LABELS } from '@/data/labels';
 
 const rustig = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const root = document.documentElement;
-const $ = <T extends Element>(sel: string) => document.querySelector(sel) as T;
+const canvas = document.getElementById('heelal') as HTMLCanvasElement;
+const opening = document.querySelector<HTMLElement>('.opening')!;
 
-// ---------- WebGL ----------
-const canvas = $<HTMLCanvasElement>('#heelal');
 let renderer: WebGLRenderer | null = null;
 try {
   renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -24,6 +25,9 @@ const klein = Math.min(innerWidth, innerHeight) < 700;
 const N = klein ? 3600 : 6000;
 const N_NEVEL = klein ? 160 : 260;
 const R = 10.5;
+/** De intro (losse sterren, wolk, stelsel) speelt sneller af dan vroeger: rond 3 s in plaats van 6 s. */
+const TEMPO = 2;
+const INTRO_EIND = 5.8;
 
 const ARMEN = LABELS.map((l) => new Color(l.kleur));
 const WIT = new Color('#FFF6EC');
@@ -37,7 +41,7 @@ function gauss(): number {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-/** Eén punt in het stelsel: straal, hoek, hoogte, kleur en het kwart (label) waar hij in het menu heen gaat. */
+/** Eén punt in het stelsel: straal, hoek, hoogte en kleur. De vier armen hebben de kleuren van de labels. */
 function stelselPunt(nevel: boolean) {
   const q = Math.random();
   const kleur = new Color();
@@ -76,14 +80,13 @@ function stelselPunt(nevel: boolean) {
       fijn = true;
     }
   }
-  return { r, th, h, kleur, fijn, kw };
+  return { r, th, h, kleur, fijn };
 }
 
 function maakLaag(aantal: number, nevel: boolean): BufferGeometry {
   const v3 = () => new Float32Array(aantal * 3);
-  const scatter = v3(), wolk = v3(), gal = v3(), arm = v3(), tint = v3(), kwKleur = v3();
-  const maat = new Float32Array(aantal), rnd = new Float32Array(aantal), kwart = new Float32Array(aantal);
-  const kwPos = new Float32Array(aantal * 2);
+  const scatter = v3(), wolk = v3(), gal = v3(), arm = v3(), tint = v3();
+  const maat = new Float32Array(aantal), rnd = new Float32Array(aantal);
   for (let i = 0; i < aantal; i++) {
     scatter.set([(Math.random() * 2 - 1) * 62, (Math.random() * 2 - 1) * 38, -Math.random() * 80 + 10], i * 3);
     wolk.set([gauss() * 3.4, gauss() * 2.6, gauss() * 3.4], i * 3);
@@ -94,10 +97,6 @@ function maakLaag(aantal: number, nevel: boolean): BufferGeometry {
     tint.set([t.r, t.g, t.b], i * 3);
     maat[i] = nevel ? 14 + Math.random() * 22 : p.fijn ? 0.5 + Math.random() * 0.5 : 3.2 + Math.pow(Math.random(), 3) * 6.2;
     rnd[i] = Math.random();
-    kwart[i] = p.kw;
-    kwPos.set([Math.random() * 2 - 1, Math.random() * 2 - 1], i * 2);
-    const kk = ARMEN[p.kw].clone().lerp(WIT, 0.25 + Math.random() * 0.35);
-    kwKleur.set([kk.r, kk.g, kk.b], i * 3);
   }
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(wolk, 3));
@@ -108,9 +107,6 @@ function maakLaag(aantal: number, nevel: boolean): BufferGeometry {
   g.setAttribute('aTint', new BufferAttribute(tint, 3));
   g.setAttribute('aSize', new BufferAttribute(maat, 1));
   g.setAttribute('aRand', new BufferAttribute(rnd, 1));
-  g.setAttribute('aKw', new BufferAttribute(kwart, 1));
-  g.setAttribute('aKwPos', new BufferAttribute(kwPos, 2));
-  g.setAttribute('aKwKleur', new BufferAttribute(kwKleur, 3));
   return g;
 }
 
@@ -119,24 +115,14 @@ const uniforms = {
   uSpin: { value: rustig ? 0 : 1 }, uHelder: { value: klein ? 0.72 : 1 },
   uTilt: { value: new Matrix3().setFromMatrix4(new Matrix4().makeRotationFromEuler(new Euler(Math.PI / 2, 0, 0))) },
   uMuis: { value: new Vector2() }, uKracht: { value: 0 }, uAspect: { value: 1 },
-  uMenu: { value: 0 }, uStijl: { value: 1 }, uStijlNaar: { value: 1 }, uOvergang: { value: 0 },
-  uTint: { value: new Color('#ffffff') }, uTintMix: { value: 0 }, uGekozen: { value: -1 }, uWeg: { value: 0 },
-  uVak0: { value: new Vector4(-0.5, 0.5, 0.5, 0.5) }, uVak1: { value: new Vector4(0.5, 0.5, 0.5, 0.5) },
-  uVak2: { value: new Vector4(-0.5, -0.5, 0.5, 0.5) }, uVak3: { value: new Vector4(0.5, -0.5, 0.5, 0.5) },
 };
-const VAKKEN = [uniforms.uVak0, uniforms.uVak1, uniforms.uVak2, uniforms.uVak3];
 
 const vertexShader = /* glsl */ `
-  uniform float uT, uTime, uScroll, uPR, uScale, uSpin, uNevel, uHelder, uKracht, uAspect, uMenu, uStijl, uStijlNaar, uOvergang;
-  uniform vec4 uVak0, uVak1, uVak2, uVak3;
-  uniform vec3 uTint;
-  uniform float uTintMix, uGekozen, uWeg;
+  uniform float uT, uTime, uScroll, uPR, uScale, uSpin, uNevel, uHelder, uKracht, uAspect;
   uniform vec2 uMuis;
   uniform mat3 uTilt;
   attribute vec3 aScatter, aCloud, aGal, aArm, aTint;
-  attribute float aSize, aRand, aKw;
-  attribute vec2 aKwPos;
-  attribute vec3 aKwKleur;
+  attribute float aSize, aRand;
   varying vec3 vColor;
   varying float vAlpha;
   varying float vPx;
@@ -150,7 +136,7 @@ const vertexShader = /* glsl */ `
     float ca = uTime * .07;
     vec3 wolk = aCloud;
     wolk.xz = mat2(cos(ca), -sin(ca), sin(ca), cos(ca)) * wolk.xz;
-    // elke ster beweegt los rond zijn plek in het stelsel
+    // elke ster beweegt los rond zijn plek in het stelsel (alleen tijdens de intro: daarna staat uTime stil)
     float draai = (1. - p2) * 2.8 * (1. - r / 13.);
     float f = .45 + aRand * 1.1;
     float fase = aRand * 43.98;
@@ -172,35 +158,9 @@ const vertexShader = /* glsl */ `
     vec2 verschuif = (richting * .085 + vec2(-richting.y, richting.x) * .06) * invloed * (.55 + aRand * .9);
     verschuif.x /= uAspect;
     gl_Position.xy += verschuif * gl_Position.w;
-    // menu: elke ster vliegt in een boogje naar het kwart van zijn label
-    float m = smoothstep(0., 1., clamp(uMenu * 1.35 - aRand * .35, 0., 1.));
-    if (m > 0.) {
-      vec4 vak = aKw < .5 ? uVak0 : aKw < 1.5 ? uVak1 : aKw < 2.5 ? uVak2 : uVak3;
-      vec2 teken = vec2(mod(aKw, 2.) < .5 ? -1. : 1., aKw < 1.5 ? 1. : -1.);
-      float isStelsel = mix(abs(uStijl - 1.) < .5 ? 1. : 0., abs(uStijlNaar - 1.) < .5 ? 1. : 0., uOvergang);
-      // een eigen klein sterrenstelsel per label, met twee armen
-      float a2 = a - aKw * 1.5708 + step(.5, fract(aRand * 7.31)) * 3.14159 + uTime * .08;
-      vec2 lok = vec2(rr * cos(a2), rr * sin(a2)) / 12.3;
-      float ry = min(vak.w, vak.z * uAspect) * .66;
-      vec2 doelStelsel = vak.xy + vec2(vak.z * .2, vak.w * .24) + lok * vec2(ry / uAspect, ry);
-      // of uitwaaieren vanuit het midden (AIO): dicht bij het midden, dunner naar buiten
-      vec2 binnen = vak.xy - teken * vak.zw;
-      float hoek = (aKwPos.x * .5 + .5) * 1.5708;
-      float straal = pow(aKwPos.y * .5 + .5, 1.7) * 1.3;
-      vec2 o = vec2(cos(hoek), sin(hoek)) * straal;
-      float mc = max(o.x, o.y);
-      if (mc > .96) o *= (.5 + .45 * fract(aRand * 13.7)) * .96 / mc;
-      vec2 doelWaaier = binnen + teken * (vec2(.02) + o) * vak.zw * 2.;
-      vec2 doel = mix(doelWaaier, doelStelsel, smoothstep(0., 1., isStelsel));
-      float w = gl_Position.w;
-      vec2 nu = w > .05 ? gl_Position.xy / w : doel;
-      vec2 baan = mix(nu, doel, m) + vec2(-(doel - nu).y, (doel - nu).x) * sin(m * 3.14159) * .18;
-      gl_Position = vec4(baan, 0., 1.);
-    }
     float twinkel = .88 + .12 * sin(uTime * (.6 + aRand * 2.2) + aRand * 60.);
     float maat = .7 * aSize * mix(1., 1.2, p2) * mix(1., .8, s) * (1. + invloed * .3);
-    vColor = mix(mix(mix(aTint, aArm, p2 * (1. - s * .7)), vec3(1.), invloed * .12), aKwKleur, m);
-    vColor = mix(vColor, mix(uTint, vec3(1.), aRand * .45), uTintMix * .8);
+    vColor = mix(mix(aTint, aArm, p2 * (1. - s * .7)), vec3(1.), invloed * .12);
     float px = maat * uScale * uPR / -mv.z;
     if (uNevel > .5) {
       vAlpha = p2 * (1. - s) * fade * (1. + invloed * .4);
@@ -208,9 +168,6 @@ const vertexShader = /* glsl */ `
     } else {
       float helder = aSize < 1.5 ? .9 : 1.;
       vAlpha = fade * twinkel * helder * uHelder * (1. + invloed * .55);
-      px = mix(px, clamp(px, 1.6 * uPR, 7. * uPR), m);
-      vAlpha *= mix(1., mix(uStijl > 1.5 ? .6 : 1., uStijlNaar > 1.5 ? .6 : 1., uOvergang), m);
-      if (uGekozen > -.5 && abs(aKw - uGekozen) > .5) vAlpha *= 1. - uWeg * m;
       float minPx = 1.25 * uPR;
       if (px < minPx) { vAlpha *= px / minPx; px = minPx; }
       gl_PointSize = min(px, 70. * uPR);
@@ -283,30 +240,40 @@ kern.scale.setScalar(klein ? 3.6 : 4.6);
 halo.scale.setScalar(12);
 scene.add(halo, kern);
 
+/**
+ * Het stelsel staat naast de tekst: op een breed scherm rechts, op een smal scherm (staand) bovenin.
+ * setViewOffset verschuift het beeld zonder het stelsel te vervormen.
+ */
 let afstand = 25;
+let tekenTot = 0;
+const tekenEven = (ms = 600) => { tekenTot = Math.max(tekenTot, performance.now() + ms); };
 function maat(): void {
   const w = innerWidth, h = innerHeight, aspect = w / h;
   const pr = Math.min(devicePixelRatio || 1, 2);
   renderer?.setPixelRatio(pr);
   renderer?.setSize(w, h, false);
   camera.aspect = aspect;
+  const breed = aspect > 1.15;
+  const staand = aspect < 0.8;
+  camera.setViewOffset(w, h, breed ? -w * 0.22 : 0, staand ? h * 0.17 : 0, w, h);
   camera.updateProjectionMatrix();
-  const tan = Math.tan(MathUtils.degToRad(22.5));
+  const tan = Math.tan((22.5 * Math.PI) / 180);
   const straal = R + 1.8;
-  afstand = Math.max(straal / (tan * 0.94), straal / (tan * aspect * (aspect < 0.8 ? 1.04 : 0.94)));
+  afstand = Math.max(straal / (tan * 0.94), straal / (tan * aspect * (aspect < 0.8 ? 1.04 : 0.94))) * (breed ? 1.06 : staand ? 1.12 : 1);
   uniforms.uPR.value = pr;
   uniforms.uScale.value = 140 * (Math.min(h, w * 1.25) / 900) * (afstand / 25);
   uniforms.uAspect.value = aspect;
+  tekenEven();
 }
 maat();
 addEventListener('resize', maat);
 
-// ---------- muis ----------
-let doelKracht = 0, kracht = 0, laatsteMuis = -Infinity;
+// ---------- muis (alleen in de opening) ----------
+let doelKracht = 0, kracht = 0;
 const muis = new Vector2(), muisDoel = new Vector2();
 if (!rustig) {
   const volg = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') laatsteMuis = performance.now();
+    // schermcoördinaten (-1..1); de verschuiving van setViewOffset zit al in de projectie van de sterren
     muisDoel.set((e.clientX / innerWidth) * 2 - 1, 1 - (e.clientY / innerHeight) * 2);
     if (doelKracht === 0) muis.copy(muisDoel);
     doelKracht = 1;
@@ -318,212 +285,51 @@ if (!rustig) {
   addEventListener('blur', () => { doelKracht = 0; });
 }
 
-// ---------- pagina ----------
-const zin = $<HTMLElement>('.zin');
-const labels = $<HTMLElement>('.labels');
-const panelen = [...document.querySelectorAll<HTMLElement>('.label')];
-const titel = $<HTMLElement>('h1');
-const hint = $<HTMLElement>('.hint');
-const reis = $<HTMLElement>('.reis');
-const hoofdstukken = new Map([...document.querySelectorAll<HTMLElement>('[data-hoofdstuk]')].map((el) => [el.dataset.hoofdstuk as LabelId, el]));
-const menuKnoppen = [...document.querySelectorAll<HTMLButtonElement>('.hoofdmenu button[data-ga]')];
-const labelVan = (id: LabelId) => LABELS.find((l) => l.id === id)!;
-const zoek = new URLSearchParams(location.search);
-const start = performance.now() - (rustig ? 9000 : Number(zoek.get('t') || 0) * 1000);
+// ---------- elk beeld ----------
 const glad = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
+const zoek = new URLSearchParams(location.search);
+const vooruit = rustig ? 9000 : Number(zoek.get('t') || 0) * 1000;
+let start = performance.now() - vooruit;
+let laatsteNu = 0, tijd = 0, vorigeScroll = -1;
 
-// Menustijl: voorlopig alleen nevels (besluit Jordan 02-10-2026). De andere stijlen blijven beschikbaar voor later:
-// zet AUTOMATISCH_WISSELEN op true om ze elke 5 seconden te laten afwisselen zolang de muis stilligt.
-// Bekijken kan ook met ?stijl=stelsel, ?stijl=planeet of ?stijl=horizon.
-const AUTOMATISCH_WISSELEN = false;
-const STIJLEN = ['nevel', 'stelsel', 'planeet', 'horizon'] as const;
-const WISSEL_MS = 5000, OVERGANG_MS = 1800, MUIS_RUST_MS = 1200;
-let stijlNu = Math.max(0, STIJLEN.indexOf((zoek.get('stijl') || 'nevel') as (typeof STIJLEN)[number]));
-let stijlVolgend = stijlNu, overgangStart = 0, wisselVanaf = 0;
-const zetStijl = (i: number) => { document.body.dataset.stijl = STIJLEN[i]; };
-zetStijl(stijlNu);
-function stijlStap(nu: number, menuZichtbaar: boolean, rust: boolean): void {
-  // Echte tijd (niet per beeld opgeteld), en de klok loopt ook tijdens de overgang: precies WISSEL_MS tussen twee wissels.
-  // Na muisbeweging, buiten het menu of met minder beweging begint de klok opnieuw.
-  if (rust || !menuZichtbaar || rustig) wisselVanaf = nu;
-  if (overgangStart) {
-    const o = Math.min(1, (performance.now() - overgangStart) / OVERGANG_MS);
-    uniforms.uStijl.value = stijlNu;
-    uniforms.uStijlNaar.value = stijlVolgend;
-    uniforms.uOvergang.value = o * o * (3 - 2 * o);
-    if (o >= 1) {
-      stijlNu = stijlVolgend;
-      overgangStart = 0;
-      uniforms.uStijl.value = stijlNu;
-      uniforms.uOvergang.value = 0;
-    }
-    return;
-  }
-  uniforms.uStijl.value = stijlNu;
-  uniforms.uStijlNaar.value = stijlNu;
-  if (AUTOMATISCH_WISSELEN && nu - wisselVanaf >= WISSEL_MS) {
-    wisselVanaf = nu;
-    stijlVolgend = (stijlNu + 1) % STIJLEN.length;
-    zetStijl(stijlVolgend);
-    overgangStart = performance.now();
-  }
-}
-
-// ---------- rand en inzoomen ----------
-let gekozen: LabelId | null = null, hoverLabel: LabelId | null = null, navHover: LabelId | null = null;
-let huidigMenu: LabelId | null | undefined, huidigeRand = '';
-const zetRand = (kleur: string) => {
-  if (kleur !== huidigeRand) root.style.setProperty('--rand', huidigeRand = kleur);
-};
-/** Na een wissel (inzoomen, terug, nieuw formaat) nog even tekenen: de kwarten schuiven met een CSS-overgang. */
-let tekenTot = 0;
-const tekenEven = (ms = 1200) => { tekenTot = Math.max(tekenTot, performance.now() + ms); };
-addEventListener('resize', () => tekenEven());
-const gedrag = (): ScrollBehavior => (rustig ? 'auto' : 'smooth');
-const menuEind = () => reis.offsetTop + reis.offsetHeight - innerHeight;
-
-/** Voert fn uit zodra het scrollen 200 ms stilstaat. */
-function naStil(fn: () => void): void {
-  let wacht = 0;
-  const opScroll = () => {
-    clearTimeout(wacht);
-    wacht = window.setTimeout(() => { removeEventListener('scroll', opScroll); fn(); }, 200);
-  };
-  addEventListener('scroll', opScroll);
-  opScroll();
-}
-
-const kijker = new IntersectionObserver((items) => items.forEach((e) => { if (e.isIntersecting) e.target.classList.add('zichtbaar'); }), { threshold: 0.25 });
-document.querySelectorAll('.scene').forEach((el) => kijker.observe(el));
-
-function zoom(id: LabelId): void {
-  const hoofdstuk = hoofdstukken.get(id)!;
-  if (gekozen === id) { hoofdstuk.scrollIntoView({ behavior: gedrag() }); return; }
-  gekozen = id;
-  labels.dataset.gekozen = id;
-  panelen.forEach((p) => p.classList.toggle('gekozen', p.dataset.label === id));
-  hoofdstukken.forEach((el, k) => { el.hidden = k !== id; });
-  uniforms.uTint.value.set(labelVan(id).kleur);
-  tekenEven(1800);
-  setTimeout(() => hoofdstuk.scrollIntoView({ behavior: gedrag() }), rustig ? 0 : 1100);
-}
-function terug(): void {
-  const afronden = () => {
-    gekozen = null;
-    delete labels.dataset.gekozen;
-    panelen.forEach((p) => p.classList.remove('gekozen'));
-    hoofdstukken.forEach((el) => { el.hidden = true; });
-    tekenEven(1800);
-  };
-  if (Math.abs(scrollY - menuEind()) < 4) { afronden(); return; }
-  scrollTo({ top: menuEind(), behavior: gedrag() });
-  naStil(afronden);
-}
-function naarLabel(id: LabelId): void {
-  if (gekozen || Math.abs(scrollY - menuEind()) < innerHeight * 0.3) { zoom(id); return; }
-  scrollTo({ top: menuEind(), behavior: gedrag() });
-  naStil(() => zoom(id));
-}
-
-document.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) => b.addEventListener('click', () => zoom(b.dataset.zoom as LabelId)));
-document.querySelectorAll('[data-terug], .terug').forEach((b) => b.addEventListener('click', terug));
-// 'Naar de labels' (voor toetsenbord): direct naar het menu, met de focus erop
-$<HTMLAnchorElement>('.naar-inhoud').addEventListener('click', (e) => {
-  e.preventDefault();
-  scrollTo({ top: menuEind(), behavior: 'auto' });
-  requestAnimationFrame(() => requestAnimationFrame(() => labels.focus()));
-});
-menuKnoppen.forEach((b) => {
-  const id = b.dataset.ga as LabelId;
-  const aan = () => { navHover = id; };
-  const uit = () => { if (navHover === id) navHover = null; };
-  b.addEventListener('pointerenter', aan);
-  b.addEventListener('focus', aan);
-  b.addEventListener('pointerleave', uit);
-  b.addEventListener('blur', uit);
-  b.addEventListener('click', () => naarLabel(id));
-});
-panelen.forEach((p) => {
-  const id = p.dataset.label as LabelId;
-  const aan = () => { hoverLabel = id; };
-  const uit = () => { if (hoverLabel === id) hoverLabel = null; };
-  p.addEventListener('pointerenter', aan);
-  p.addEventListener('focusin', aan);
-  p.addEventListener('pointerleave', uit);
-  p.addEventListener('focusout', uit);
+// De shaders compileren op de achtergrond (KHR_parallel_shader_compile) in plaats van in het eerste beeld: zo blokkeert
+// het stelsel de pagina niet terwijl de tekst al leesbaar is. De intro begint pas als alles klaar is.
+let gereed = false;
+renderer?.compileAsync(scene, camera).catch(() => undefined).then(() => {
+  gereed = true;
+  start = performance.now() - vooruit;
+  tekenEven();
 });
 
-// ---------- elk beeld ----------
-// Rust (verbeterplan, hub docs/website/VERBETERPLAN.md): het stelsel draait en twinkelt alleen tijdens de intro en komt daarna
-// in ~2,5 s tot stilstand. Daarna beweegt het alleen nog als de bezoeker iets doet (scrollen, muis, inzoomen); dan pas wordt er
-// getekend. In de presentatie per label vervaagt het heelal, zodat de tekst op een effen achtergrond staat.
-const INTRO_EIND = 5.8;
-let klaar = false, laatsteNu = 0, tijd = 0, vorigeScroll = -1;
 function frame(nu: number): void {
   requestAnimationFrame(frame);
-  if (document.hidden) { laatsteNu = nu; return; }
+  if (document.hidden || (renderer && !gereed)) { laatsteNu = nu; return; }
   const dt = Math.min(0.05, laatsteNu ? (nu - laatsteNu) / 1000 : 0.016);
   laatsteNu = nu;
-  const t = (nu - start) / 1000;
-  const snelheid = rustig ? 0 : 1 - glad(INTRO_EIND, INTRO_EIND + 2.5, t);
-  tijd += dt * snelheid;
-  const v = scrollY / innerHeight;
-  const s = Math.min(1, Math.max(0, v / 1.15));
-  const hoofdstuk = gekozen ? hoofdstukken.get(gekozen)! : null;
-  const c = hoofdstuk ? (scrollY + innerHeight - hoofdstuk.offsetTop) / innerHeight : 0;
-  const menu = (rustig ? 1 : glad(1.7, 2.6, v)) * (1 - glad(0.15, 0.9, c));
-  const tekst = rustig ? 1 : glad(2.95, 3.35, v);
+  // intro-klok (versneld); daarna komt het stelsel in ~1,5 s tot stilstand
+  const t = rustig ? 9 : ((nu - start) / 1000) * TEMPO;
+  const snelheid = rustig ? 0 : 1 - glad(INTRO_EIND, INTRO_EIND + 3, t);
+  tijd += dt * TEMPO * snelheid;
 
-  // de pagina
-  zin.style.setProperty('--zin', String(glad(0.75, 1.15, v) * (1 - glad(1.5, 1.85, v))));
-  panelen.forEach((p, i) => p.style.setProperty('--v', `${(rustig ? 150 : glad(2.3 + i * 0.07, 3.05 + i * 0.07, v) * 150).toFixed(2)}%`));
-  labels.style.setProperty('--t', String(tekst));
-  labels.classList.toggle('actief', tekst > 0.6);
-  labels.inert = !rustig && tekst < 0.3;
-  if (!klaar && t > 4.9) { klaar = true; document.body.classList.add('klaar'); }
-  titel.style.opacity = String(1 - glad(0.02, 0.32, s));
-  hint.style.opacity = klaar ? String(1 - glad(0, 0.12, s)) : '';
-
-  // rand: alleen de kleur van het label onder de muis of het gekozen label
-  const actief = navHover || gekozen || (tekst > 0.6 ? hoverLabel : null);
-  // de kwarten vullen het scherm: een stilliggende muis staat altijd op een kwart, dus alleen beweging pauzeert het wisselen
-  stijlStap(nu, tekst > 0.9, Boolean(gekozen || navHover) || nu - laatsteMuis < MUIS_RUST_MS);
-  if (gekozen !== huidigMenu) {
-    huidigMenu = gekozen;
-    menuKnoppen.forEach((b) => b.setAttribute('aria-current', String(b.dataset.ga === gekozen)));
-  }
-  root.classList.toggle('label-kleur', Boolean(actief));
-  if (actief) zetRand(labelVan(actief).kleur);
-  root.style.setProperty('--gloed', String(gekozen ? glad(0, 0.8, c) : 0));
-
-  if (!renderer) return;
-  // in de presentatie per label vervaagt het heelal; helemaal weg = niet meer tekenen
-  const weg = gekozen ? glad(0.25, 0.9, c) : 0;
+  // scrollen door de opening: het stelsel valt uiteen en vervaagt; daaronder een effen achtergrond
+  const v = scrollY / Math.max(1, opening.offsetHeight);
+  const weg = glad(0.25, 0.8, v);
   canvas.style.opacity = weg ? String(1 - weg) : '';
-  const wegDoel = gekozen ? 1 : 0;
+  if (!renderer || weg >= 1) return;
+
   const gescrold = scrollY !== vorigeScroll;
   vorigeScroll = scrollY;
-  const bezig = snelheid > 0.0005 || gescrold || nu < tekenTot || overgangStart > 0
-    || Math.abs(kracht - doelKracht) > 0.002 || (kracht > 0.002 && muis.distanceToSquared(muisDoel) > 1e-6)
-    || Math.abs(uniforms.uWeg.value - wegDoel) > 0.001;
-  if (weg >= 1 || !bezig) return;
-  // het heelal
-  uniforms.uTintMix.value = gekozen ? 0.25 + 0.75 * glad(0, 0.8, c) : 0;
-  uniforms.uGekozen.value = gekozen ? LABELS.findIndex((l) => l.id === gekozen) : -1;
-  uniforms.uWeg.value += (wegDoel - uniforms.uWeg.value) * (1 - Math.exp(-dt * 5));
-  if (menu > 0) {
-    panelen.forEach((p, i) => {
-      const b = p.getBoundingClientRect();
-      VAKKEN[i].value.set(((b.left + b.width / 2) / innerWidth) * 2 - 1, 1 - ((b.top + b.height / 2) / innerHeight) * 2, b.width / innerWidth, b.height / innerHeight);
-    });
-  }
+  const bezig = snelheid > 0.0005 || gescrold || nu < tekenTot
+    || Math.abs(kracht - doelKracht) > 0.002 || (kracht > 0.002 && muis.distanceToSquared(muisDoel) > 1e-6);
+  if (!bezig) return;
+
+  const s = Math.min(1, v / 1.1);
   uniforms.uT.value = t;
   uniforms.uTime.value = tijd;
   uniforms.uScroll.value = s;
-  uniforms.uMenu.value = menu;
   muis.lerp(muisDoel, 1 - Math.exp(-dt * 7));
   kracht += (doelKracht - kracht) * (1 - Math.exp(-dt * (doelKracht > kracht ? 4 : 1.6)));
   uniforms.uMuis.value.copy(muis);
@@ -531,7 +337,7 @@ function frame(nu: number): void {
   const vorm = glad(3.6, 5.8, t) * (1 - glad(0, 0.6, s));
   kern.material.opacity = vorm * (0.42 + 0.04 * Math.sin(tijd * 1.3));
   halo.material.opacity = vorm * 0.1;
-  camera.position.set(0, 0, afstand * (1 - 0.62 * s));
+  camera.position.set(0, 0, afstand * (1 - 0.5 * s));
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
