@@ -7,6 +7,7 @@
  * De gids weet niets van de pagina: de site (of app, of shop) bepaalt wat AIO zegt en welke knoppen er zijn.
  * Zonder WebGL of bij prefers-reduced-motion blijft de CSS-bol staan, zonder vliegen, meezweven of woord-voor-woord.
  * AIO voert nooit iets uit zonder klik op een akkoordknop (docs/agent/AIO-KARAKTER.md).
+ * Kopie in aioplus-app/src/lib/aio-wezen/gids.ts: houd beide gelijk (wijziging melden aan "AIO Plus - Agent").
  */
 // inline en pas bij het laden van de gids in de head: een gewone import zet Astro als blokkerende stylesheet op elke pagina
 import gidsCss from './gids.css?inline';
@@ -26,6 +27,22 @@ export type GidsBericht = {
   wijs?: Element | null;
   /** Gaat na een paar seconden vanzelf dicht als er niets mee gebeurt (vertellen tijdens het scrollen). */
   vluchtig?: boolean;
+  /** Een voorstel van AIO als kaart in de ballon (app: een wijziging die pas na Uitvoeren gebeurt). */
+  voorstel?: GidsVoorstel;
+  /** Eerdere berichten in dit gesprek: dichtgeklapt boven de laatste vraag. */
+  eerder?: { jij: boolean; tekst: string }[];
+};
+export type GidsVoorstel = {
+  /** Wat er gaat gebeuren, in één zin. */
+  tekst: string;
+  /** De tekst die AIO wil plaatsen of versturen (bijvoorbeeld een antwoord op een review). */
+  inhoud?: string;
+  /** Uitvoeren en Annuleren; leeg als het voorstel al gedaan, geannuleerd of vervallen is. */
+  knoppen?: GidsKnop[];
+  /** Hoe het afliep, bijvoorbeeld "Uitgevoerd." */
+  status?: string;
+  /** Het voorstel is uitgevoerd (status met een vinkje). */
+  gedaan?: boolean;
 };
 export type GidsOpties = {
   menuKnop: HTMLElement;
@@ -36,6 +53,21 @@ export type GidsOpties = {
   plaatshouder?: string;
   /** Kleine regel onder het vraagveld, bijvoorbeeld dat AIO fouten kan maken. */
   noot?: string;
+  /** Licht (app in Licht en Brand) of donker (aioplus.ai, app in Donker). Standaard donker. */
+  thema?: 'donker' | 'licht';
+  /** Bredere ballon voor langere antwoorden en voorstellen (app). */
+  breed?: boolean;
+  /** Wat AIO zegt bij een klik op de ster als hij nog niets zei. */
+  welkom?: string;
+  /** Knop "Nieuw gesprek" in de ballon zodra er een gesprek is. */
+  opNieuwGesprek?: () => void;
+  /**
+   * Links naar andere sites (https://…) klikbaar maken. Standaard aan (aioplus.ai); uit in de app, waar AIO tekst van
+   * buitenaf leest (reviews): dan worden alleen pagina's op dezelfde site (/pad) en e-mailadressen een link.
+   */
+  externeLinks?: boolean;
+  /** Maximaal aantal tekens per vraag, gelijk aan de server. Standaard 1000. */
+  maxTekens?: number;
 };
 
 type Vec = { x: number; y: number };
@@ -44,12 +76,13 @@ const klem = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 const maak = <K extends keyof HTMLElementTagNameMap>(tag: K, klasse: string, ouder?: HTMLElement): HTMLElementTagNameMap[K] => {
   const el = document.createElement(tag);
   el.className = klasse;
-  ouder?.append(el);
+  ouder?.appendChild(el);
   return el;
 };
 
 /** Zet een tekst om in alinea's en lijstjes, met klikbare links. Nooit als HTML: alleen tekstknopen. */
-export function opmaak(el: HTMLElement, tekst: string): void {
+export function opmaak(el: HTMLElement, tekst: string, externeLinks = true): void {
+  const linkjes = (ouder: HTMLElement, regel: string) => knopen(tekstDelen(regel, externeLinks)).forEach((k) => ouder.appendChild(k));
   el.replaceChildren();
   for (const blok of tekst.trim().split(/\n{2,}/)) {
     const regels = blok.split('\n').filter((r) => r.trim());
@@ -63,7 +96,7 @@ export function opmaak(el: HTMLElement, tekst: string): void {
         linkjes(lijst.appendChild(document.createElement('li')), punt[1]);
       } else {
         lijst = null;
-        if (alinea) alinea.append(document.createElement('br'));
+        if (alinea) alinea.appendChild(document.createElement('br'));
         else alinea = el.appendChild(document.createElement('p'));
         linkjes(alinea, regel);
       }
@@ -71,19 +104,48 @@ export function opmaak(el: HTMLElement, tekst: string): void {
   }
 }
 
-function linkjes(el: HTMLElement, tekst: string): void {
-  const patroon = /(https?:\/\/[^\s)]+[^\s).,!?;:]|[\w.+-]+@[\w-]+\.[\w.-]*\w)/g;
+export type TekstDeel = string | { vet: TekstDeel[] } | { link: string; tekst: string; extern: boolean };
+
+/**
+ * Splitst een regel in tekst, **vet** en links. [tekst](/pad) is een pagina op dezelfde site of in de app (niet //domein,
+ * dat is een ander domein). Externe links (https://…) alleen als externeLinks aan staat; anders blijven ze gewone tekst.
+ */
+export function tekstDelen(tekst: string, externeLinks = true): TekstDeel[] {
+  const pad = String.raw`\/(?!\/)[^\s)]*`;
+  const doel = externeLinks ? String.raw`${pad}|https?:\/\/[^\s)]+` : pad;
+  const los = String.raw`${externeLinks ? String.raw`https?:\/\/[^\s)]+[^\s).,!?;:]|` : ''}[\w.+-]+@[\w-]+\.[\w.-]*\w`;
+  const patroon = new RegExp(String.raw`\*\*(.+?)\*\*|\[([^\]]+)\]\((${doel})\)|(${los})`, 'g');
+  const delen: TekstDeel[] = [];
   let vanaf = 0;
   for (const m of tekst.matchAll(patroon)) {
-    el.append(tekst.slice(vanaf, m.index));
-    const a = document.createElement('a');
-    a.textContent = m[0];
-    a.href = m[0].includes('@') && !m[0].startsWith('http') ? `mailto:${m[0]}` : m[0];
-    if (a.href.startsWith('http')) { a.target = '_blank'; a.rel = 'noopener'; }
-    el.append(a);
+    if (m.index > vanaf) delen.push(tekst.slice(vanaf, m.index));
+    if (m[1] !== undefined) delen.push({ vet: tekstDelen(m[1], externeLinks) });
+    else {
+      const d = m[3] ?? m[4]!;
+      const extern = d.startsWith('http');
+      delen.push({ link: !extern && !d.startsWith('/') ? `mailto:${d}` : d, tekst: m[2] ?? m[4]!, extern });
+    }
     vanaf = m.index + m[0].length;
   }
-  el.append(tekst.slice(vanaf));
+  if (vanaf < tekst.length) delen.push(tekst.slice(vanaf));
+  return delen;
+}
+
+/** Tekstdelen als tekstknopen (nooit als HTML). */
+function knopen(delen: TekstDeel[]): Node[] {
+  return delen.map((d) => {
+    if (typeof d === 'string') return document.createTextNode(d);
+    if ('vet' in d) {
+      const b = document.createElement('strong');
+      knopen(d.vet).forEach((k) => b.appendChild(k));
+      return b;
+    }
+    const a = document.createElement('a');
+    a.textContent = d.tekst;
+    a.href = d.link;
+    if (d.extern) { a.target = '_blank'; a.rel = 'noopener'; }
+    return a;
+  });
 }
 
 /** Laat de woorden van AIO een voor een verschijnen (alleen het beeld; schermlezers krijgen de hele tekst). */
@@ -120,8 +182,13 @@ export class AioGids {
   private weg = maak('button', 'aio-gids-weg', this.sterVak);
   private ballon = maak('section', 'aio-gids-ballon', this.laag);
   private inhoud = maak('div', 'aio-gids-inhoud', this.ballon);
+  private eerderRij = maak('div', 'aio-gids-eerder-rij', this.inhoud);
+  private eerderKnop = maak('button', 'aio-gids-eerder-knop', this.eerderRij);
+  private nieuwKnop = maak('button', 'aio-gids-nieuw', this.eerderRij);
+  private eerder = maak('div', 'aio-gids-eerder', this.inhoud);
   private kop = maak('p', 'aio-gids-kop', this.inhoud);
   private tekst = maak('div', 'aio-gids-tekst', this.inhoud);
+  private voorstel = maak('div', 'aio-gids-voorstel', this.inhoud);
   private knoppen = maak('div', 'aio-gids-knoppen', this.inhoud);
   private ideeen = maak('div', 'aio-gids-ideeen', this.inhoud);
   private vorm = maak('form', 'aio-gids-vorm', this.ballon);
@@ -148,6 +215,7 @@ export class AioGids {
   private wijsTimer = 0;
   private ballonMaat = { b: 320, h: 120 };
   private sterGemaakt = false;
+  private ster: ReturnType<typeof maakAio> = null;
   private bezig: { stop: boolean } | null = null;
   /** Telt elk nieuw bericht: een antwoord dat nog binnenloopt, tekent niet over een nieuwer bericht heen. */
   private versie = 0;
@@ -157,11 +225,19 @@ export class AioGids {
       const stijl = document.createElement('style');
       stijl.id = 'aio-gids-css';
       stijl.textContent = gidsCss;
-      document.head.append(stijl);
+      document.head.appendChild(stijl);
     }
     this.laag.hidden = true;
     this.laag.id = 'aio-gids';
     this.laag.className = 'aio-gids';
+    this.laag.classList.toggle('licht', opties.thema === 'licht');
+    this.laag.classList.toggle('breed', Boolean(opties.breed));
+    this.eerderKnop.type = this.nieuwKnop.type = 'button';
+    this.eerderKnop.setAttribute('aria-expanded', 'false');
+    this.eerderKnop.addEventListener('click', () => this.klapEerder(this.eerderKnop.getAttribute('aria-expanded') !== 'true'));
+    this.nieuwKnop.textContent = 'Nieuw gesprek';
+    this.nieuwKnop.addEventListener('click', () => opties.opNieuwGesprek?.());
+    this.eerderRij.hidden = this.eerder.hidden = this.voorstel.hidden = true;
     this.sterVak.setAttribute('aria-hidden', 'true');
     this.lijf.type = 'button';
     this.lijf.tabIndex = -1;
@@ -177,10 +253,10 @@ export class AioGids {
     const label = maak('label', 'sr-only', this.vorm);
     label.htmlFor = 'aio-gids-vraag';
     label.textContent = 'Je vraag aan AIO';
-    this.vorm.prepend(label);
+    this.vorm.insertBefore(label, this.vorm.firstChild);
     this.veld.id = 'aio-gids-vraag';
     this.veld.type = 'text';
-    this.veld.maxLength = 1000;
+    this.veld.maxLength = opties.maxTekens ?? 1000;
     this.veld.autocomplete = 'off';
     this.veld.enterKeyHint = 'send';
     this.veld.placeholder = opties.plaatshouder ?? 'Vraag het AIO';
@@ -192,9 +268,9 @@ export class AioGids {
     this.pijl.setAttribute('aria-hidden', 'true');
     this.pijlLijn.setAttribute('class', 'lijn');
     this.pijlPunt.setAttribute('class', 'punt');
-    this.pijl.append(this.pijlLijn, this.pijlPunt);
-    this.laag.prepend(this.pijl);
-    document.body.append(this.laag);
+    this.pijl.appendChild(this.pijlLijn); this.pijl.appendChild(this.pijlPunt);
+    this.laag.insertBefore(this.pijl, this.laag.firstChild);
+    document.body.appendChild(this.laag);
 
     this.vorm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -241,7 +317,7 @@ export class AioGids {
     this.doelSchaal = 1;
     if (!this.sterGemaakt) {
       this.sterGemaakt = true;
-      maakAio(this.sterVak, { grootte: 'groot', invoer: this.veld });
+      this.ster = maakAio(this.sterVak, { grootte: 'groot', invoer: this.veld, achtergrond: this.opties.thema === 'licht' ? 'licht' : 'donker' });
     }
     if (!beweging()) { this.p = this.thuis(); this.schaal = 1; }
     meld('open');
@@ -271,6 +347,7 @@ export class AioGids {
 
   /** Telt de berichten: een voorstel weet zo of het nog het laatste woord van AIO is. */
   get berichtNr(): number { return this.versie; }
+  private get externeLinks(): boolean { return this.opties.externeLinks ?? true; }
 
   /** AIO vliegt terug in de menuknop. */
   verberg(): void {
@@ -298,22 +375,26 @@ export class AioGids {
     clearTimeout(this.dichtTimer);
     this.kop.hidden = !b.kop;
     this.kop.textContent = b.kop ?? '';
-    opmaak(this.tekst, b.tekst);
+    opmaak(this.tekst, b.tekst, this.externeLinks);
     this.tekst.classList.remove('laadt');
     const duur = woordVoorWoord(this.tekst);
     meld('praat', duur);
     this.zetKnoppen(this.knoppen, b.knoppen ?? [], 'aio-gids-knop');
     this.zetKnoppen(this.ideeen, b.ideeen ?? [], 'aio-gids-idee');
+    this.zetVoorstel(b.voorstel);
+    this.zetEerder(b.eerder ?? []);
     this.wijs(b.wijs ?? null);
     this.openBallon();
+    // een nieuw antwoord in een lang gesprek: begin bovenaan de laatste vraag, niet onderaan het vorige
+    this.inhoud.scrollTop = this.eerder.hidden ? 0 : this.kop.offsetTop - this.inhoud.offsetTop - 8;
     if (b.vluchtig && !this.ballon.matches(':hover, :focus-within')) {
       this.dichtTimer = window.setTimeout(() => { if (!this.ballon.matches(':hover, :focus-within')) this.klapIn(); }, 9000 + duur * 1000);
     }
   }
 
   /** Een vraag van de bezoeker: toont de vraag en een wachtend antwoord; geeft functies om het antwoord binnen te laten lopen. */
-  vraag(vraag: string): { stukje: (tekst: string) => void } {
-    this.zeg({ kop: vraag, tekst: '' });
+  vraag(vraag: string, eerder?: GidsBericht['eerder']): { stukje: (tekst: string) => void } {
+    this.zeg({ kop: vraag, tekst: '', eerder });
     const versie = this.versie;
     this.tekst.classList.add('laadt');
     meld('wacht');
@@ -326,7 +407,7 @@ export class AioGids {
         meld('praat');
         if (gepland) return;
         gepland = true;
-        requestAnimationFrame(() => { gepland = false; if (this.versie === versie) opmaak(this.tekst, totNu); });
+        requestAnimationFrame(() => { gepland = false; if (this.versie === versie) opmaak(this.tekst, totNu, this.externeLinks); });
       },
     };
   }
@@ -340,6 +421,50 @@ export class AioGids {
       return b;
     }));
     houder.hidden = !knoppen.length;
+  }
+
+  /** De voorstelkaart: wat er gaat gebeuren, eventueel de tekst, en Uitvoeren/Annuleren of hoe het afliep. */
+  private zetVoorstel(v: GidsVoorstel | undefined): void {
+    this.voorstel.replaceChildren();
+    this.voorstel.hidden = !v;
+    if (!v) return;
+    maak('p', 'aio-gids-voorstel-kop', this.voorstel).textContent = 'Voorstel van AIO';
+    maak('p', 'aio-gids-voorstel-tekst', this.voorstel).textContent = v.tekst;
+    if (v.status) maak('p', `aio-gids-voorstel-status${v.gedaan ? ' gedaan' : ''}`, this.voorstel).textContent = v.status;
+    if (v.inhoud) maak('p', 'aio-gids-voorstel-inhoud', this.voorstel).textContent = v.inhoud;
+    if (v.knoppen?.length) {
+      const rij = maak('div', 'aio-gids-knoppen', this.voorstel);
+      this.zetKnoppen(rij, v.knoppen, 'aio-gids-knop');
+    }
+  }
+
+  /** Eerdere berichten: een knop "Eerder in dit gesprek" en de berichten zelf, dichtgeklapt. */
+  private zetEerder(eerder: { jij: boolean; tekst: string }[]): void {
+    const open = !this.eerder.hidden;
+    this.eerder.replaceChildren(...eerder.map((b) => {
+      const el = maak('div', `aio-gids-eerder-bericht${b.jij ? ' jij' : ''}`);
+      if (b.jij) el.textContent = b.tekst;
+      else opmaak(el, b.tekst, this.externeLinks);
+      return el;
+    }));
+    this.eerderKnop.hidden = !eerder.length;
+    this.eerderKnop.textContent = `Eerder in dit gesprek (${Math.ceil(eerder.length / 2)})`;
+    this.nieuwKnop.hidden = !this.opties.opNieuwGesprek || (!eerder.length && !this.kop.textContent);
+    this.eerderRij.hidden = this.eerderKnop.hidden && this.nieuwKnop.hidden;
+    this.klapEerder(open && eerder.length > 0);
+  }
+
+  private klapEerder(open: boolean): void {
+    this.eerder.hidden = !open;
+    this.eerderKnop.setAttribute('aria-expanded', String(open));
+    this.eerderKnop.classList.toggle('open', open);
+  }
+
+  /** Wisselt tussen licht en donker (de app wisselt de weergave zonder te herladen). */
+  zetThema(thema: 'donker' | 'licht'): void {
+    this.opties.thema = thema;
+    this.laag.classList.toggle('licht', thema === 'licht');
+    this.ster?.zetAchtergrond(thema);
   }
 
   private openBallon(): void {
@@ -358,7 +483,12 @@ export class AioGids {
 
   /** Focus op de eerste akkoordknop (na een keuze van de bezoeker, zodat het ook met het toetsenbord vlot gaat). */
   focusKnop(): void {
-    this.knoppen.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+    (this.knoppen.querySelector<HTMLButtonElement>('button') ?? this.voorstel.querySelector<HTMLButtonElement>('button'))?.focus({ preventScroll: true });
+  }
+
+  /** Focus op het vraagveld (na een antwoord, zodat je meteen verder kunt typen). */
+  focusVeld(): void {
+    if (this.ballonOpen) this.veld.focus({ preventScroll: true });
   }
 
   // ---------- aanwijzen en doen ----------
@@ -435,7 +565,7 @@ export class AioGids {
     // klikken op AIO: de ballon open of dicht
     if (this.ballonOpen) this.klapIn();
     else if (this.tekst.childNodes.length) this.openBallon();
-    else this.zeg({ tekst: 'Vraag me gerust iets over AIO Plus en de labels.' });
+    else this.zeg({ tekst: this.opties.welkom ?? 'Vraag me gerust iets over AIO Plus en de labels.' });
   }
 
   // ---------- plaats en beweging ----------
