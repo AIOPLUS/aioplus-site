@@ -107,11 +107,12 @@ export function opmaak(el: HTMLElement, tekst: string, externeLinks = true): voi
 export type TekstDeel = string | { vet: TekstDeel[] } | { link: string; tekst: string; extern: boolean };
 
 /**
- * Splitst een regel in tekst, **vet** en links. [tekst](/pad) is een pagina op dezelfde site of in de app (niet //domein,
- * dat is een ander domein). Externe links (https://…) alleen als externeLinks aan staat; anders blijven ze gewone tekst.
+ * Splitst een regel in tekst, **vet** en links. [tekst](/pad) is een pagina op dezelfde site of in de app (niet //domein
+ * of /\domein: browsers lezen dat als een ander domein; daarom ook geen backslash in het pad). Externe links (https://…)
+ * alleen als externeLinks aan staat; anders blijven ze gewone tekst.
  */
 export function tekstDelen(tekst: string, externeLinks = true): TekstDeel[] {
-  const pad = String.raw`\/(?!\/)[^\s)]*`;
+  const pad = String.raw`\/(?![\/\\])[^\s)\\]*`;
   const doel = externeLinks ? String.raw`${pad}|https?:\/\/[^\s)]+` : pad;
   const los = String.raw`${externeLinks ? String.raw`https?:\/\/[^\s)]+[^\s).,!?;:]|` : ''}[\w.+-]+@[\w-]+\.[\w.-]*\w`;
   const patroon = new RegExp(String.raw`\*\*(.+?)\*\*|\[([^\]]+)\]\((${doel})\)|(${los})`, 'g');
