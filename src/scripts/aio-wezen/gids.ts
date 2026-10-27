@@ -14,8 +14,11 @@ import gidsCss from './gids.css?inline';
 import { huidigLabel, LABELKLEUR, meld, zetKijkdoel } from './brein';
 import { maakAio } from './index';
 
-export type GidsKnop = { tekst: string; soort?: 'akkoord' | 'gewoon'; doe: () => void };
+/** soort: akkoord = warme knop (AIO doet iets na jouw klik); wijs = pil met een pijltje (AIO wijst de weg naar een pagina). */
+export type GidsKnop = { tekst: string; soort?: 'akkoord' | 'gewoon' | 'wijs'; doe: () => void };
 export type GidsBericht = {
+  /** Korte regel met een vinkje boven de rest, bijvoorbeeld "Je bent bij Auto-antwoorden." */
+  melding?: string;
   /** Wat AIO zegt: korte alinea's; regels die met "- " beginnen worden een lijstje, links worden klikbaar. */
   tekst: string;
   /** Kleine kop boven de tekst, bijvoorbeeld "Stap 1 van 3" of de vraag van de bezoeker. */
@@ -68,6 +71,8 @@ export type GidsOpties = {
   externeLinks?: boolean;
   /** Maximaal aantal tekens per vraag, gelijk aan de server. Standaard 1000. */
   maxTekens?: number;
+  /** Tot waar de bovenkant vrij blijft van de ballon (px vanaf boven), bijvoorbeeld de onderkant van het menu. */
+  vrijBoven?: () => number;
 };
 
 type Vec = { x: number; y: number };
@@ -187,6 +192,7 @@ export class AioGids {
   private eerderKnop = maak('button', 'aio-gids-eerder-knop', this.eerderRij);
   private nieuwKnop = maak('button', 'aio-gids-nieuw', this.eerderRij);
   private eerder = maak('div', 'aio-gids-eerder', this.inhoud);
+  private melding = maak('p', 'aio-gids-melding', this.inhoud);
   private kop = maak('p', 'aio-gids-kop', this.inhoud);
   private tekst = maak('div', 'aio-gids-tekst', this.inhoud);
   private voorstel = maak('div', 'aio-gids-voorstel', this.inhoud);
@@ -250,7 +256,7 @@ export class AioGids {
     this.sterVak.removeAttribute('aria-hidden');
     this.ballon.setAttribute('aria-label', 'AIO, je gids');
     this.tekst.setAttribute('aria-live', 'polite');
-    this.kop.hidden = true;
+    this.kop.hidden = this.melding.hidden = true;
     const label = maak('label', 'sr-only', this.vorm);
     label.htmlFor = 'aio-gids-vraag';
     label.textContent = 'Je vraag aan AIO';
@@ -374,6 +380,8 @@ export class AioGids {
   zeg(b: GidsBericht): void {
     this.versie++;
     clearTimeout(this.dichtTimer);
+    this.melding.hidden = !b.melding;
+    this.melding.textContent = b.melding ?? '';
     this.kop.hidden = !b.kop;
     this.kop.textContent = b.kop ?? '';
     opmaak(this.tekst, b.tekst, this.externeLinks);
@@ -415,7 +423,7 @@ export class AioGids {
 
   private zetKnoppen(houder: HTMLElement, knoppen: GidsKnop[], klasse: string): void {
     houder.replaceChildren(...knoppen.map((k) => {
-      const b = maak('button', `${klasse}${k.soort === 'akkoord' ? ' akkoord' : ''}`);
+      const b = maak('button', `${klasse}${k.soort && k.soort !== 'gewoon' ? ` ${k.soort}` : ''}`);
       b.type = 'button';
       b.textContent = k.tekst;
       b.addEventListener('click', () => k.doe());
@@ -664,7 +672,15 @@ export class AioGids {
       this.ballon.style.setProperty('--staart', `${klem(y - by, 20, h - 20)}px`);
     }
     bx = klem(bx, m, W - b - m);
-    by = klem(by, m, Math.max(m, H - h - m));
+    const boven = Math.max(m, (this.opties.vrijBoven?.() ?? 0) + 10);
+    by = klem(by, Math.min(boven, H - h - m), Math.max(m, H - h - m));
+    // de ballon nooit over wat AIO aanwijst (bijvoorbeeld een knop in het menu bovenin): eronder, anders erboven
+    const w = this.wijsEl?.isConnected ? this.wijsEl.getBoundingClientRect() : null;
+    if (w && bx < w.right + 10 && bx + b > w.left - 10 && by < w.bottom + 10 && by + h > w.top - 10) {
+      if (w.bottom + 14 + h < H - m) by = w.bottom + 14;
+      else if (w.top - 14 - h > m) by = w.top - 14 - h;
+      if (W >= 640) this.ballon.style.setProperty('--staart', `${klem(y - by, 20, h - 20)}px`);
+    }
     this.ballon.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
     this.ballon.dataset.kant = kantB;
 

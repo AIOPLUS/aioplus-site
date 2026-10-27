@@ -5,7 +5,7 @@
 .aio-gids[hidden] { display: none; }
 
 /* ---------- de ster ---------- */
-.aio-gids-ster { position: fixed; left: 0; top: 0; z-index: 36; width: 200px; height: 200px; pointer-events: none; will-change: transform; transition: opacity .3s var(--aio-ease); }
+.aio-gids-ster { position: fixed; left: 0; top: 0; z-index: calc(var(--aio-z, 35) + 1); width: 200px; height: 200px; pointer-events: none; will-change: transform; transition: opacity .3s var(--aio-ease); }
 .aio-gids-ster::before { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: radial-gradient(circle at 50% 42%, #fffbf4 0%, #ffe6c8 52%, #f0c493 100%); box-shadow: 0 0 40px 10px rgb(255 228 196 / .35); }
 .aio-gids-ster.heeft-ster::before { display: none; }
 .aio-gids-ster .aio-ster { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -19,7 +19,7 @@
 .aio-gids.weg .aio-gids-weg { opacity: 0; }
 
 /* ---------- de ballon ---------- */
-.aio-gids-ballon { position: fixed; left: 0; top: 0; z-index: 37; box-sizing: border-box; width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; border-radius: 20px; border: 1px solid var(--aio-rand);
+.aio-gids-ballon { position: fixed; left: 0; top: 0; z-index: calc(var(--aio-z, 35) + 2); box-sizing: border-box; width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; border-radius: 20px; border: 1px solid var(--aio-rand);
   background: var(--aio-glas); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2); color: var(--aio-tekst); font-size: 14.5px; line-height: 1.5; text-align: left;
   box-shadow: 0 24px 60px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 240 222 / .07);
   opacity: 0; visibility: hidden; scale: .94; transition: opacity .25s var(--aio-ease), scale .35s var(--aio-ease), visibility 0s .25s; }
@@ -48,6 +48,13 @@
 .aio-gids-knop.akkoord:hover { background: #fff1de; translate: 0 -1px; }
 .aio-gids-idee { height: 32px; background: rgb(255 255 255 / .04); font-weight: 400; }
 .aio-gids-ballon button:focus-visible, .aio-gids-ballon a:focus-visible { outline: 2px solid var(--aio-warm); outline-offset: 2px; }
+/* wijs: AIO wijst de weg naar een pagina uit het antwoord (pil met een pijltje) */
+.aio-gids-idee.wijs { display: inline-flex; align-items: center; gap: 7px; padding: 0 14px 0 11px; border-color: var(--aio-voorstel-rand); background: var(--aio-voorstel); font-weight: 500; }
+.aio-gids-idee.wijs::before { content: ''; flex: none; width: 14px; height: 14px; background: var(--aio-accent); -webkit-mask: var(--aio-wijs-icoon) center / contain no-repeat; mask: var(--aio-wijs-icoon) center / contain no-repeat; }
+.aio-gids { --aio-wijs-icoon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 13.5c1-4.5 4-7.5 9-8.5' stroke-dasharray='1.6 2.4'/%3E%3Cpath d='M8.5 2.5l3.5 2.4-2.3 3.6'/%3E%3C/svg%3E"); }
+.aio-gids-melding { display: flex; align-items: flex-start; gap: 6px; margin: 0 0 10px; font-size: 13px; font-weight: 500; color: var(--aio-goed); }
+.aio-gids-melding[hidden] { display: none; }
+.aio-gids-melding::before { content: ''; flex: none; width: 10px; height: 5px; margin: 5px 2px 0; border: solid currentColor; border-width: 0 0 2px 2px; rotate: -45deg; }
 
 /* bezig: een dunne lichtstreep bovenaan, zolang AIO iets voor je doet */
 .aio-gids-ballon.werkt::before { content: ''; position: absolute; left: 18px; right: 18px; top: 0; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--aio-warm), transparent) 0 0 / 40% 100% no-repeat; animation: aio-gids-werkt 1s linear infinite; }
@@ -68,11 +75,11 @@
 .aio-gids-ballon[data-kant='boven']::after { top: -7px; left: calc(var(--staart, 60px) - 6px); rotate: 135deg; }
 
 /* ---------- aanwijzen: gloed om het element en een getekende pijl ---------- */
-.aio-gids-gloed { --gk: #ffd9ae; position: fixed; left: 0; top: 0; z-index: 35; pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease), scale .25s var(--aio-ease);
+.aio-gids-gloed { --gk: #ffd9ae; position: fixed; left: 0; top: 0; z-index: var(--aio-z, 35); pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease), scale .25s var(--aio-ease);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--gk) 55%, #fff), 0 0 26px 4px color-mix(in srgb, var(--gk) 65%, transparent), inset 0 0 18px color-mix(in srgb, var(--gk) 30%, transparent); }
 .aio-gids-gloed.aan { opacity: 1; }
 .aio-gids-gloed.klik { scale: .94; }
-.aio-gids-pijl { position: fixed; inset: 0; z-index: 35; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease); }
+.aio-gids-pijl { position: fixed; inset: 0; z-index: var(--aio-z, 35); width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: 0; transition: opacity .24s var(--aio-ease); }
 .aio-gids-pijl.aan { opacity: 1; }
 .aio-gids-pijl path { fill: none; stroke: rgb(255 228 196 / .9); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgb(255 200 150 / .6)); }
 .aio-gids-pijl .lijn { stroke-dasharray: 2 8; }
@@ -118,6 +125,7 @@
 .aio-gids.licht .aio-gids-knop, .aio-gids.licht .aio-gids-idee { border-color: rgb(21 20 28 / .14); }
 .aio-gids.licht .aio-gids-knop:hover, .aio-gids.licht .aio-gids-idee:hover { border-color: rgb(222 170 112 / .8); background: rgb(240 196 147 / .14); }
 .aio-gids.licht .aio-gids-idee { background: rgb(255 255 255 / .7); }
+.aio-gids.licht .aio-gids-idee.wijs { border-color: var(--aio-voorstel-rand); background: var(--aio-voorstel); }
 .aio-gids.licht .aio-gids-knop.akkoord { background: linear-gradient(180deg, #ffeedd, #f6cf9f); color: #1a1206; box-shadow: 0 0 0 1px rgb(214 160 100 / .7) inset, 0 6px 16px rgb(200 140 70 / .25); }
 .aio-gids.licht .aio-gids-knop.akkoord:hover { background: linear-gradient(180deg, #fff3e6, #f8d7ad); }
 .aio-gids.licht .aio-gids-veld { border-color: rgb(21 20 28 / .14); background: rgb(255 255 255 / .8); }
